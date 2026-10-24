@@ -1,5 +1,5 @@
 import { PRESUMED_EXCLUSIVE_TAX_RATE } from "../constants";
-import { DividendSource, ParsedDirpf, ParsedDirpfField } from "../types";
+import { DividendSource, ParseCheck, ParsedDirpf, ParsedDirpfField } from "../types";
 import { consolidateSources } from "./dividends";
 import { formatCurrency, parseCurrencyBR } from "./format";
 
@@ -129,9 +129,30 @@ export function parseDirpf(fullText: string): ParsedDirpf {
     if (value > 0) results.push({ targetType, targetId, label, value: roundCents(value), sourceSnippet: label });
   };
 
+  const checks: ParseCheck[] = [];
+  const check = (label: string, expected: number | null, found: number) => {
+    if (expected === null) return;
+    checks.push({ label, expected: roundCents(expected), found: roundCents(found), ok: Math.abs(expected - found) < 0.01 });
+  };
+
+  const lineValues: Record<string, number> = {};
   for (const matcher of LINE_MATCHERS) {
-    add(matcher.targetType, matcher.targetId, matcher.label, extractLineValue(fullText, matcher.labelPattern) ?? 0);
+    const value = extractLineValue(fullText, matcher.labelPattern) ?? 0;
+    lineValues[matcher.targetId] = value;
+    add(matcher.targetType, matcher.targetId, matcher.label, value);
   }
+
+  // Totals printed in the "Resumo" itself: the sum of the lines read must match.
+  const sumOf = (ids: string[]) => ids.reduce((acc, id) => acc + (lineValues[id] ?? 0), 0);
+  const resumo = /^[^\S\n]*RESUMO\b/m.exec(fullText);
+  if (resumo) {
+    const resumoText = fullText.slice(resumo.index);
+    const incomeTotal = new RegExp(`^[^\\S\\n]*TOTAL(?: DE RENDIMENTOS TRIBUT[AÁ]VEIS)?[^\\S\\n]+${CURRENCY}`, "im").exec(resumoText);
+    check("Rendimentos tributáveis: soma das linhas = TOTAL do Resumo", incomeTotal ? parseCurrencyBR(incomeTotal[1]) : null,
+      sumOf(["i1", "i2", "i3", "i4", "i5", "i6", "i7"]));
+  }
+  check("Imposto pago: soma das linhas = \"Total do imposto pago\"", extractLineValue(fullText, "Total do imposto pago"),
+    sumOf(["t1", "t2", "t3", "t4", "t5", "t6", "t7", "t8"]));
 
   // Lucros e dividendos (item 09) and Simples Nacional distributions (item
   // 13) leave the exempt total and become one row per paying source. If the
@@ -154,6 +175,9 @@ export function parseDirpf(fullText: string): ParsedDirpf {
     }
     sources.push(...consolidateSources(raw));
     add("income", "i8", "Rendimentos isentos e não tributáveis (exceto lucros e dividendos)", exempt.total - declaredDividendTotal);
+    check("Isentos: soma dos itens = TOTAL da ficha", exempt.total, sumNumberedItems(exempt.body));
+    check("Lucros e dividendos: soma das fontes = total dos itens 09 + 13", declaredDividendTotal,
+      raw.filter((r) => r.cnpj).reduce((acc, r) => acc + r.total, 0));
   }
 
   // Exclusive/definitive taxation: the 15% presumption only applies where
@@ -163,6 +187,7 @@ export function parseDirpf(fullText: string): ParsedDirpf {
   const exclusive = findSection(fullText, EXCLUSIVE_HEADER);
   if (exclusive) {
     add("income", "i9", "Rendimentos Sujeitos à Tributação Exclusiva/Definitiva (total)", exclusive.total);
+    check("Tributação exclusiva: soma dos itens = TOTAL da ficha", exclusive.total, sumNumberedItems(exclusive.body));
 
     const foreignIncome = findNumberedItem(exclusive.body, FOREIGN_INCOME_ITEM);
     const foreignTax = extractLineValue(fullText, FOREIGN_TAX_LINE) ?? 0;
@@ -177,5 +202,11 @@ export function parseDirpf(fullText: string): ParsedDirpf {
     }
   }
 
-  return { fields: results, sources, declaredDividendTotal: roundCents(declaredDividendTotal) };
+  return { fields: results, sources, declaredDividendTotal: roundCents(declaredDividendTotal), checks };
+}
+
+// Sum of the numbered items of a ficha ("09. Lucros e dividendos ... 609.356,42").
+function sumNumberedItems(body: string): number {
+  const itemLine = new RegExp(`^[^\\S\\n]*\\d{2}\\.\\s.*?[^\\S\\n]{2,}${CURRENCY}[^\\S\\n]*$`, "gm");
+  return [...body.matchAll(itemLine)].reduce((acc, m) => acc + parseCurrencyBR(m[1]), 0);
 }

@@ -63,9 +63,13 @@ function reconstructReadingOrder(items: PositionedItem[]): string {
 
 // Extracts every page of a PDF as reading-order text, entirely in the
 // browser — the file never leaves the device.
-export async function extractPdfPages(file: File): Promise<string[]> {
+export async function loadPdf(file: File) {
   const buffer = await file.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
+  return pdfjsLib.getDocument({ data: buffer }).promise;
+}
+
+export async function extractPdfPages(file: File): Promise<string[]> {
+  const pdf = await loadPdf(file);
   const pages: string[] = [];
 
   for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {

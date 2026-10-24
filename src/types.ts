@@ -77,12 +77,24 @@ export interface ParsedDirpfField {
   sourceSnippet: string;
 }
 
+// A consistency check between values read from the declaration and a total
+// printed in the declaration itself (e.g. sum of items vs. "TOTAL").
+export interface ParseCheck {
+  label: string;
+  expected: number;
+  found: number;
+  ok: boolean;
+}
+
 export interface ParsedDirpf {
   fields: ParsedDirpfField[];
   sources: DividendSource[];
   // Total of the dividend items as printed in the declaration (items 09 + 13),
   // to check against the sum of the parsed sources.
   declaredDividendTotal: number;
+  checks: ParseCheck[];
+  // True when the text came from OCR (PDF without a text layer).
+  fromOcr?: boolean;
 }
 
 export interface TaxBracket {

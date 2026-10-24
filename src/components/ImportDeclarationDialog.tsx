@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { FileWarning, Loader2, UploadCloud, X } from "lucide-react";
-import { DividendSource, ParsedDirpf, ParsedDirpfField } from "../types";
+import { AlertTriangle, CheckCircle2, FileWarning, Loader2, ScanText, UploadCloud, X, XCircle } from "lucide-react";
+import { ParsedDirpf } from "../types";
 import { parseDirpf } from "../utils/dirpfParser";
 import { formatCurrency } from "../utils/format";
+import { OcrProgress, ocrPdfPages } from "../utils/ocr";
 import { extractPdfPages } from "../utils/pdfText";
 
 interface ImportDeclarationDialogProps {
@@ -11,37 +12,45 @@ interface ImportDeclarationDialogProps {
   onApply: (parsed: ParsedDirpf) => void;
 }
 
-type Status = "idle" | "processing" | "done" | "error";
+type Status = "idle" | "processing" | "needsOcr" | "ocr" | "done" | "error";
 
 // Below this many characters the PDF has no usable text layer (scanned or
-// text converted to vector outlines) and can't be parsed.
+// text converted to vector outlines) and can only be read by OCR.
 const MIN_TEXT_LENGTH = 500;
 
 export default function ImportDeclarationDialog({ isOpen, onClose, onApply }: ImportDeclarationDialogProps) {
   const [status, setStatus] = useState<Status>("idle");
-  const [fields, setFields] = useState<ParsedDirpfField[]>([]);
-  const [sources, setSources] = useState<DividendSource[]>([]);
-  const [declaredDividendTotal, setDeclaredDividendTotal] = useState(0);
+  const [parsed, setParsed] = useState<ParsedDirpf | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [errorMessage, setErrorMessage] = useState("");
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [ocrProgress, setOcrProgress] = useState<OcrProgress | null>(null);
 
   if (!isOpen) return null;
 
-  const sourcesTotal = sources.reduce((acc, s) => acc + s.total, 0);
-  const sourcesMatch = Math.abs(sourcesTotal - declaredDividendTotal) < 0.01;
+  const fields = parsed?.fields ?? [];
+  const sources = parsed?.sources ?? [];
+  const checks = parsed?.checks ?? [];
+  const failedChecks = checks.filter((c) => !c.ok).length;
 
   const handleReset = () => {
     setStatus("idle");
-    setFields([]);
-    setSources([]);
-    setDeclaredDividendTotal(0);
+    setParsed(null);
     setSelectedIds(new Set());
     setErrorMessage("");
+    setPendingFile(null);
+    setOcrProgress(null);
   };
 
   const handleClose = () => {
     handleReset();
     onClose();
+  };
+
+  const showResult = (result: ParsedDirpf) => {
+    setParsed(result);
+    setSelectedIds(new Set(result.fields.map((f) => f.targetId)));
+    setStatus("done");
   };
 
   const handleFile = async (file: File) => {
@@ -50,21 +59,27 @@ export default function ImportDeclarationDialog({ isOpen, onClose, onApply }: Im
     try {
       const text = (await extractPdfPages(file)).join("\n");
       if (text.replace(/\s/g, "").length < MIN_TEXT_LENGTH) {
-        setErrorMessage(
-          "Este PDF não tem texto pesquisável (foi escaneado ou o texto foi convertido em imagem/contornos). Preencha os valores manualmente."
-        );
-        setStatus("error");
+        setPendingFile(file);
+        setStatus("needsOcr");
         return;
       }
-      const parsed = parseDirpf(text);
-      setFields(parsed.fields);
-      setSources(parsed.sources);
-      setDeclaredDividendTotal(parsed.declaredDividendTotal);
-      setSelectedIds(new Set(parsed.fields.map((f) => f.targetId)));
-      setStatus("done");
+      showResult(parseDirpf(text));
     } catch (err) {
       console.error(err);
       setErrorMessage("Não foi possível ler este PDF. Verifique se é um arquivo válido.");
+      setStatus("error");
+    }
+  };
+
+  const handleOcr = async () => {
+    if (!pendingFile) return;
+    setStatus("ocr");
+    try {
+      const text = (await ocrPdfPages(pendingFile, setOcrProgress)).join("\n");
+      showResult({ ...parseDirpf(text), fromOcr: true });
+    } catch (err) {
+      console.error(err);
+      setErrorMessage("A leitura por OCR falhou. Verifique a conexão (o motor de OCR é baixado na primeira vez) ou preencha manualmente.");
       setStatus("error");
     }
   };
@@ -79,7 +94,8 @@ export default function ImportDeclarationDialog({ isOpen, onClose, onApply }: Im
   };
 
   const handleApply = () => {
-    onApply({ fields: fields.filter((f) => selectedIds.has(f.targetId)), sources, declaredDividendTotal });
+    if (!parsed) return;
+    onApply({ ...parsed, fields: fields.filter((f) => selectedIds.has(f.targetId)) });
     handleClose();
   };
 
@@ -121,6 +137,46 @@ export default function ImportDeclarationDialog({ isOpen, onClose, onApply }: Im
             </div>
           )}
 
+          {status === "needsOcr" && (
+            <div className="flex flex-col items-center justify-center gap-3 p-8 text-center">
+              <ScanText className="w-8 h-8 text-secondary" />
+              <p className="text-sm font-bold text-primary">Este PDF não tem texto pesquisável.</p>
+              <p className="text-xs text-text-gray max-w-md leading-relaxed">
+                Ele foi escaneado ou o texto foi convertido em imagem/contornos. É possível tentar a leitura por <strong>OCR</strong>
+                (reconhecimento de texto na imagem): leva alguns segundos por página e o motor de OCR é baixado na primeira vez. O PDF
+                continua sendo lido só no seu navegador. OCR pode errar dígitos — os valores serão conferidos contra os totais da própria
+                declaração.
+              </p>
+              <div className="flex gap-3 pt-2">
+                <button onClick={handleReset} className="px-4 py-2 text-xs font-bold text-primary hover:bg-primary/5 rounded-lg cursor-pointer">
+                  Escolher outro arquivo
+                </button>
+                <button
+                  onClick={handleOcr}
+                  className="px-5 py-2 text-xs font-bold bg-primary text-white rounded-lg hover:bg-primary/90 cursor-pointer flex items-center gap-1.5"
+                >
+                  <ScanText className="w-4 h-4" /> Ler com OCR
+                </button>
+              </div>
+            </div>
+          )}
+
+          {status === "ocr" && (
+            <div className="flex flex-col items-center justify-center gap-3 p-10">
+              <Loader2 className="w-8 h-8 text-primary animate-spin" />
+              <span className="text-sm font-bold text-primary">
+                {ocrProgress?.stage === "reading"
+                  ? `Lendo por OCR: página ${ocrProgress.page} de ${ocrProgress.totalPages}`
+                  : "Preparando o motor de OCR..."}
+              </span>
+              {ocrProgress?.stage === "reading" && (
+                <div className="w-64 h-2 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="h-full bg-primary transition-all" style={{ width: `${(ocrProgress.page / ocrProgress.totalPages) * 100}%` }} />
+                </div>
+              )}
+            </div>
+          )}
+
           {status === "error" && (
             <div className="flex flex-col items-center justify-center gap-3 p-10 text-center">
               <FileWarning className="w-8 h-8 text-accent" />
@@ -131,8 +187,18 @@ export default function ImportDeclarationDialog({ isOpen, onClose, onApply }: Im
             </div>
           )}
 
-          {status === "done" && (
+          {status === "done" && parsed && (
             <>
+              {parsed.fromOcr && (
+                <div className="p-3 rounded-xl border border-accent/30 bg-accent/5 text-xs text-accent font-medium flex gap-2">
+                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span>
+                    Valores lidos por <strong>OCR</strong>. Confira cada valor com a declaração antes de usar.{" "}
+                    {checks.length > 0 && `${checks.length - failedChecks} de ${checks.length} conferências por totais fecharam.`}
+                  </span>
+                </div>
+              )}
+
               {fields.length === 0 && sources.length === 0 ? (
                 <div className="text-center p-8 space-y-2">
                   <FileWarning className="w-8 h-8 text-gray-400 mx-auto" />
@@ -150,10 +216,7 @@ export default function ImportDeclarationDialog({ isOpen, onClose, onApply }: Im
                   </p>
                   <div className="border border-gray-100 rounded-xl divide-y divide-gray-100">
                     {fields.map((field) => (
-                      <label
-                        key={field.targetId}
-                        className="flex items-center justify-between gap-4 p-3 cursor-pointer hover:bg-gray-50"
-                      >
+                      <label key={field.targetId} className="flex items-center justify-between gap-4 p-3 cursor-pointer hover:bg-gray-50">
                         <div className="flex items-center gap-3">
                           <input
                             type="checkbox"
@@ -182,15 +245,30 @@ export default function ImportDeclarationDialog({ isOpen, onClose, onApply }: Im
                           </div>
                         ))}
                       </div>
-                      <p className={`text-[11px] font-medium ${sourcesMatch ? "text-emerald-700" : "text-accent"}`}>
-                        {sourcesMatch
-                          ? `Soma das fontes confere com o total declarado (${formatCurrency(declaredDividendTotal)}).`
-                          : `Atenção: soma das fontes (${formatCurrency(sourcesTotal)}) difere do total declarado (${formatCurrency(declaredDividendTotal)}).`}
-                      </p>
                     </div>
                   )}
                 </>
               )}
+
+              {checks.length > 0 && (
+                <div className="space-y-2">
+                  <h3 className="text-xs font-bold text-primary uppercase tracking-wider">Conferência com os totais da declaração</h3>
+                  <div className="border border-gray-100 rounded-xl divide-y divide-gray-100">
+                    {checks.map((c) => (
+                      <div key={c.label} className="flex items-start justify-between gap-3 p-3 text-xs">
+                        <span className={`flex items-start gap-2 font-medium ${c.ok ? "text-emerald-700" : "text-accent"}`}>
+                          {c.ok ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <XCircle className="w-4 h-4 shrink-0" />}
+                          {c.label}
+                        </span>
+                        <span className="text-right whitespace-nowrap text-text-gray">
+                          {c.ok ? formatCurrency(c.expected) : `lido ${formatCurrency(c.found)} × total ${formatCurrency(c.expected)}`}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="flex justify-end gap-3 pt-2">
                 <button onClick={handleReset} className="px-4 py-2 text-xs font-bold text-primary hover:bg-primary/5 rounded-lg transition-colors cursor-pointer">
                   Escolher outro arquivo
