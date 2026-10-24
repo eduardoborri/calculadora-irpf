@@ -333,6 +333,9 @@ export default function Calculator() {
       simDeductionMode,
       simDependents,
       simResults,
+    }).catch((err) => {
+      console.error(err);
+      alert("Não foi possível gerar o relatório em PDF. Tente novamente.");
     });
   };
 

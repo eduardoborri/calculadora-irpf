@@ -2,6 +2,15 @@ import { jsPDF } from "jspdf";
 import { CalculationResult, DividendSource, IncomeItem, TaxPaymentItem } from "../types";
 import { formatCurrency, formatPercent } from "./format";
 
+/*
+ * PDF report in the GSGA-PR house style (A4 landscape), reproduced from the
+ * firm's report template: petróleo top band with a verde accent block, coral
+ * bar beside the title block, logo top right, coral-tinted callout, tables
+ * with a petróleo header, verde-tint highlight rows and a petróleo total row,
+ * and the "minuta" pill in the footer. Measurements below are in points and
+ * were taken from the template.
+ */
+
 interface SimResultsForReport {
   deductionAmount: number;
   netBase: number;
@@ -33,471 +42,435 @@ export interface GeneratePdfReportParams {
   simResults: SimResultsForReport;
 }
 
-export function generatePdfReport(params: GeneratePdfReportParams) {
-  const {
-    activeTab,
-    incomeItems,
-    taxItems,
-    dividendSources,
-    results,
-    simPeriod,
-    simTaxableIncome,
-    simFinancialIncome,
-    simRuralIncome,
-    simTaxedDividends,
-    simExemptDividends,
-    simDeductionMode,
-    simDependents,
-    simResults,
-  } = params;
+type RGB = [number, number, number];
+const C = {
+  primary: [20, 62, 60] as RGB,
+  secondary: [35, 135, 131] as RGB,
+  coral: [233, 75, 65] as RGB,
+  bandLine: [94, 116, 114] as RGB,
+  muted: [94, 116, 114] as RGB,
+  body: [74, 85, 83] as RGB,
+  coralTint: [252, 228, 228] as RGB,
+  tealTint: [228, 241, 240] as RGB,
+  rule: [227, 232, 231] as RGB,
+  headerDivider: [52, 90, 88] as RGB,
+  white: [255, 255, 255] as RGB,
+};
 
-  const doc = new jsPDF({
-    orientation: "portrait",
-    unit: "mm",
-    format: "a4",
-  });
+const PAGE_W = 841.92;
+const PAGE_H = 595.28;
+const LEFT = 59.2;
+const RIGHT = 777.8;
+const WIDTH = RIGHT - LEFT;
+const CONTENT_TOP = 133.5;
+const CONTENT_BOTTOM = 530;
+const FOOTER_PILL = "MINUTA PARA DISCUSSÃO · SUJEITA A ALTERAÇÕES";
+const FIRM = "Gaia Silva Gaede Advogados";
 
-  let y = 12;
+// ------------------------------------------------------------------ assets
+async function fetchBase64(path: string): Promise<string> {
+  const res = await fetch(`${import.meta.env.BASE_URL}${path}`);
+  if (!res.ok) throw new Error(`${path}: ${res.status}`);
+  const bytes = new Uint8Array(await res.arrayBuffer());
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(binary);
+}
 
-  // Helper to ensure page bounds
-  const ensureSpace = (height: number) => {
-    if (y + height > 275) {
-      doc.addPage();
-      y = 12;
+interface Assets {
+  font: string; // "Inter" or "helvetica" fallback
+  logo: string | null;
+}
 
-      // Draw elegant page header line on new pages
-      doc.setFillColor(20, 62, 60); // GSGA primary
-      doc.rect(10, 10, 190, 2, "F");
+// Inter (SIL OFL) embedded in the PDF; Aptos can't be embedded under its
+// license. Falls back to Helvetica if the files can't be loaded.
+async function loadAssets(doc: jsPDF): Promise<Assets> {
+  let font = "helvetica";
+  try {
+    const [regular, semibold, bold] = await Promise.all(["fonts/Inter-400.ttf", "fonts/Inter-600.ttf", "fonts/Inter-700.ttf"].map(fetchBase64));
+    doc.addFileToVFS("Inter-400.ttf", regular);
+    doc.addFont("Inter-400.ttf", "Inter", "normal");
+    doc.addFileToVFS("Inter-600.ttf", semibold);
+    doc.addFont("Inter-600.ttf", "Inter", "semibold");
+    doc.addFileToVFS("Inter-700.ttf", bold);
+    doc.addFont("Inter-700.ttf", "Inter", "bold");
+    font = "Inter";
+  } catch (err) {
+    console.warn("Fonte Inter indisponível, usando Helvetica.", err);
+  }
+  let logo: string | null = null;
+  try {
+    logo = `data:image/png;base64,${await fetchBase64("brand/gsga-logo.png")}`;
+  } catch (err) {
+    console.warn("Logotipo indisponível.", err);
+  }
+  return { font, logo };
+}
 
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(130, 140, 139);
-      doc.setFontSize(7);
-      doc.text("Relatório de Apuração IRPF Mínimo — Lei 15.270/2025", 10, 15);
-      y = 22;
-    }
-  };
+// ------------------------------------------------------------------ layout engine
+interface PageHeading {
+  eyebrow: string;
+  title: string;
+  subtitle: string;
+}
 
-  // Helper to render long wrapped paragraphs cleanly with automatic page-break protection
-  const drawParagraph = (
-    text: string,
-    fontSize = 8,
-    isStyle: "normal" | "bold" | "italic" = "normal",
-    textColor = [68, 76, 75],
-    lineSpacing = 3.6
-  ) => {
-    doc.setFont("helvetica", isStyle);
-    doc.setFontSize(fontSize);
-    doc.setTextColor(textColor[0], textColor[1], textColor[2]);
+interface Column {
+  label: string;
+  width: number;
+  align?: "left" | "right" | "center";
+}
 
-    const lines = doc.splitTextToSize(text, 178);
-    lines.forEach((line: string) => {
-      ensureSpace(lineSpacing + 1);
-      doc.text(line, 12, y);
-      y += lineSpacing;
-    });
-    y += 1.5; // spacing after paragraph
-  };
+type RowKind = "normal" | "highlight" | "total";
+interface Row {
+  cells: string[];
+  kind?: RowKind;
+}
 
-  // Main Header Banner
-  doc.setFillColor(20, 62, 60); // GSGA primary
-  doc.rect(10, 10, 190, 26, "F");
+class Report {
+  doc: jsPDF;
+  y = CONTENT_TOP;
+  private heading: PageHeading | null = null;
 
-  doc.setTextColor(255, 255, 255);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(8);
-  doc.text("GSGA-PR, apuração do IRPF mínimo", 15, 17);
-
-  doc.setFontSize(13);
-  doc.text("Relatório de Planejamento e Aferição: IRPF Mínimo", 15, 24);
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8.5);
-  doc.text("Análise Técnica de Conformidade com a Lei nº 15.270/2025 (Regime de Alíquota Efetiva Global)", 15, 30);
-
-  y = 42;
-
-  // Metadata Block
-  doc.setTextColor(95, 105, 104);
-  doc.setFontSize(8);
-  doc.setFont("helvetica", "normal");
-  doc.text(`Data de Emissão: ${new Date().toLocaleDateString("pt-BR")} às ${new Date().toLocaleTimeString("pt-BR")}`, 10, y);
-  doc.text(`Escopo: simulação da apuração do IRPF mínimo (Lei nº 15.270/2025)`, 10, y + 4);
-  doc.text(`Método Aplicado: ${activeTab === "detailed" ? "Ficha Detalhada Individual" : "Simulador de Parâmetros Globais"}`, 10, y + 8);
-  y += 15;
-
-  const drawSectionHeader = (title: string) => {
-    ensureSpace(14);
-    doc.setFillColor(230, 241, 240);
-    doc.rect(10, y, 190, 8, "F");
-
-    doc.setFillColor(20, 62, 60);
-    doc.rect(10, y, 1, 8, "F"); // Side border line
-
-    doc.setTextColor(20, 62, 60);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(9);
-    doc.text(title, 13, y + 5.5);
-    y += 12;
-  };
-
-  const drawRow = (label: string, valueStr: string, isTotal = false, customColor?: [number, number, number]) => {
-    ensureSpace(8);
-    if (isTotal) {
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(20, 62, 60);
-    } else {
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(68, 76, 75);
-    }
-    doc.setFontSize(8.5);
-    doc.text(label, 12, y);
-
-    doc.setFont("helvetica", "bold");
-    if (customColor) {
-      doc.setTextColor(customColor[0], customColor[1], customColor[2]);
-    } else if (isTotal) {
-      doc.setTextColor(20, 62, 60);
-    } else {
-      doc.setTextColor(35, 135, 131);
-    }
-    doc.text(valueStr, 200, y, { align: "right" });
-
-    // Draw horizontal divider rule
-    doc.setDrawColor(230, 241, 240);
-    doc.setLineWidth(0.15);
-    doc.line(10, y + 2.5, 200, y + 2.5);
-
-    y += 7;
-  };
-
-  // ---------------- EXPLANATORY MEMORANDUM (CARTA AO CLIENTE) ----------------
-  drawSectionHeader("Mensagem técnica");
-
-  // Text approved by the user (GSGA-PR).
-  drawParagraph(
-    "O IRPF Mínimo, instituído pela Lei nº 15.270/2025, estabelece uma tributação mínima para pessoas físicas de alta renda, com alíquotas efetivas de até 10%, conforme o nível de rendimentos anuais.",
-    8,
-    "normal",
-    [68, 76, 75]
-  );
-
-  drawParagraph(
-    "Diferentemente da sistemática tradicional, que prevê a isenção de lucros e dividendos distribuídos à pessoa física, o novo regime considera determinados rendimentos na apuração de uma base de cálculo ampliada, observadas as exclusões e deduções expressamente previstas em lei.",
-    8,
-    "normal",
-    [68, 76, 75]
-  );
-
-  drawParagraph(
-    "O mecanismo busca verificar se a tributação suportada pelo contribuinte ao longo do ano atingiu o patamar mínimo exigido. Caso contrário, poderá haver a incidência de Imposto de Renda da Pessoa Física Mínimo (IRPFM), calculado conforme as regras legais aplicáveis.",
-    8,
-    "normal",
-    [68, 76, 75]
-  );
-
-  // ---------------- EFFECT OF DEDUCTIONS ----------------
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(7.5);
-  const alertMsg =
-    "Na declaração de ajuste anual, deduções como despesas médicas, despesas com instrução, dependentes ou o desconto simplificado reduzem a base de cálculo e, por consequência, o imposto devido. O IRPFM, por sua vez, é apurado sobre uma base ampliada de rendimentos, sem essas deduções, e o imposto apurado na declaração de ajuste é considerado na redução do valor devido a título de IRPFM. " +
-    "Por isso, quando a tributação do contribuinte fica abaixo do patamar mínimo e há IRPFM a recolher, a economia obtida com deduções na declaração de ajuste é compensada por um aumento equivalente do IRPFM, e o benefício financeiro dessas deduções deixa de existir. Quando a tributação já supera o patamar mínimo, as deduções mantêm integralmente o seu efeito.";
-  const splitAlert = doc.splitTextToSize(alertMsg, 184);
-  const alertHeight = 10 + splitAlert.length * 3.3 + 2;
-  ensureSpace(alertHeight + 4);
-  doc.setFillColor(253, 237, 235); // light coral (alert box)
-  doc.rect(10, y, 190, alertHeight, "F");
-  doc.setFillColor(233, 75, 65); // GSGA coral (alert)
-  doc.rect(10, y, 1, alertHeight, "F");
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(8);
-  doc.setTextColor(200, 60, 52);
-  doc.text("Dinâmica fiscal relevante: o efeito das deduções", 13, y + 5);
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(7.5);
-  doc.setTextColor(120, 40, 35);
-  doc.text(splitAlert, 13, y + 10);
-  y += alertHeight + 4;
-
-  if (activeTab === "detailed") {
-    // ---------------- DETAILED TAB REPORT ----------------
-    drawSectionHeader("1. Ficha de Rendimentos Declarados e Bases Sujeitas");
-
-    const activeIncomes = incomeItems.filter((item) => item.value > 0);
-    if (activeIncomes.length === 0) {
-      ensureSpace(8);
-      doc.setFont("helvetica", "italic");
-      doc.setTextColor(130, 140, 139);
-      doc.text("Nenhum rendimento ativo adicionado.", 12, y);
-      y += 8;
-    } else {
-      activeIncomes.forEach((item) => {
-        const typeLabel = item.isSubject ? " (Base do Piso Mínimo)" : " (Isento das Regras)";
-        drawRow(`${item.label}${typeLabel}`, formatCurrency(item.value));
-      });
-    }
-
-    y += 2;
-    drawRow("Total de Rendimentos Brutos Declarados", formatCurrency(results.totalGrossIncome), true);
-    drawRow("Base de Cálculo Sujeita ao Tributo Mínimo", formatCurrency(results.subjectBase), true);
-    y += 4;
-
-    // Dividends, source by source (Art. 16-B)
-    if (dividendSources.length > 0) {
-      drawSectionHeader("2. Lucros e Dividendos por Fonte Pagadora e Redutor (Art. 16-B)");
-      const resultById = new Map(results.dividends.perSource.map((r) => [r.id, r]));
-      dividendSources.forEach((source) => {
-        const r = resultById.get(source.id);
-        const rate = r?.effectiveRate === null || r === undefined ? "sem dados da PJ" : formatPercent(r.effectiveRate);
-        drawRow(
-          `${source.name}${source.cnpj ? ` (${source.cnpj})` : ""}${source.isSimples ? " – Simples Nacional" : ""}`,
-          `Total ${formatCurrency(source.total)}`
-        );
-        drawRow(
-          `   Deliberado até 2025: ${formatCurrency(Math.min(source.protectedAmount, source.total))} | Posterior: ${formatCurrency(r?.posterior ?? 0)}` +
-            (source.isAggregate ? "" : ` | Efetiva: ${rate} | Nominal: ${formatPercent(source.nominalRate)}`),
-          `Redutor ${formatCurrency(r?.redutor ?? 0)}`
-        );
-      });
-
-      y += 2;
-      drawRow("Dividendos posteriores a 2025 (na base)", formatCurrency(results.dividends.posteriorTotal), true);
-      drawRow("Dividendos deliberados até 2025 (protegidos, fora da base)", formatCurrency(results.dividends.protectedTotal), true);
-      drawRow("Redutor potencial (soma das fontes)", formatCurrency(results.dividends.redutorPotential));
-      drawRow("Redutor aplicado (limitado ao saldo devido)", formatCurrency(results.reduction16B), true);
-      y += 4;
-    }
-
-    // Taxes paid (Classic IRPF)
-    drawSectionHeader("3. Deduções Clássicas e Recolhimentos de Impostos Regulares");
-    const activeTaxes = taxItems.filter((item) => item.value > 0);
-    if (activeTaxes.length === 0 && results.presumedExclusiveTax === 0 && results.dividends.withholdingTotal === 0) {
-      ensureSpace(8);
-      doc.setFont("helvetica", "italic");
-      doc.setTextColor(130, 140, 139);
-      doc.text("Nenhum imposto antecipado ou desconto registrado.", 12, y);
-      y += 8;
-    } else {
-      activeTaxes.forEach((item) => {
-        drawRow(item.label, formatCurrency(item.value));
-      });
-      if (results.presumedExclusiveTax > 0) {
-        drawRow("Imposto presumido s/ rendimentos de tributação exclusiva/definitiva (15%)", formatCurrency(results.presumedExclusiveTax));
-      }
-      if (results.dividends.withholdingTotal > 0) {
-        drawRow("Retenção de 10% s/ dividendos posteriores a 2025", formatCurrency(results.dividends.withholdingTotal));
-      }
-    }
-    y += 2;
-    drawRow("Total de Imposto Recolhido Clássico / Crédito Devido", formatCurrency(results.totalTaxPaid), true);
-    y += 4;
-
-    // Final Conclusion
-    drawSectionHeader("4. Resultado da Apuração e Síntese Tributária");
-    drawRow("Base Operacional Sujeita ao Mínimo", formatCurrency(results.subjectBase));
-    drawRow("Alíquota Efetiva Progressiva Estimada", formatPercent(results.minimumAliquot));
-    drawRow("IRPF Mínimo Devido (Piso)", formatCurrency(results.minimumTaxDue));
-    drawRow("Crédito Clássico Utilizável", formatCurrency(results.totalTaxPaid));
-
-    if (results.reduction16B > 0) {
-      drawRow("Abatimento Legal por Equivalência (Art. 16-B)", `-${formatCurrency(results.reduction16B)}`);
-    }
-
-    y += 4;
-    ensureSpace(32);
-
-    let colorBorder: [number, number, number] = [20, 62, 60];
-    let bigTitle = "RESULTADO REGULARIZADO";
-    let bigValue = "R$ 0,00 (Sem Adicional)";
-    let textDesc =
-      "O imposto já pago ou retido, somado ao redutor do art. 16-B, alcança ou supera o IRPF mínimo apurado. Não há IRPFM a recolher.";
-
-    if (results.additionalTax > 0) {
-      colorBorder = [233, 75, 65]; // GSGA coral – tax due
-      bigTitle = "ADICIONAL COMPLEMENTAR MÍNIMO EXIGIDO (A RECOLHER)";
-      bigValue = formatCurrency(results.additionalTax);
-      textDesc =
-        "O imposto já pago ou retido, somado ao redutor do art. 16-B, não alcança o IRPF mínimo apurado. A diferença corresponde ao IRPFM a recolher, apurado na declaração de ajuste anual.";
-    } else if (results.refund > 0) {
-      colorBorder = [35, 135, 131]; // GSGA secondary – refund
-      bigTitle = "RESTITUIÇÃO DE RETENÇÕES DISPONÍVEL";
-      bigValue = formatCurrency(results.refund);
-      textDesc =
-        "As retenções na fonte declaradas superam o teto final do IRPF Mínimo Legal decorrente do período. O contribuinte possui saldo de crédito para compensação ou devolução conforme vias administrativas aplicáveis.";
-    }
-
-    // Draw final card outline
-    doc.setFillColor(242, 247, 247);
-    doc.rect(10, y, 190, 26, "F");
-
-    doc.setFillColor(colorBorder[0], colorBorder[1], colorBorder[2]);
-    doc.rect(10, y, 1.5, 26, "F"); // highlight side strip
-
-    doc.setTextColor(colorBorder[0], colorBorder[1], colorBorder[2]);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(8);
-    doc.text(bigTitle, 14, y + 5);
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(14);
-    doc.text(bigValue, 14, y + 12);
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(7.5);
-    doc.setTextColor(95, 105, 104);
-    const splitDesc = doc.splitTextToSize(textDesc, 180);
-    doc.text(splitDesc, 14, y + 17);
-
-    y += 30;
-  } else {
-    // ---------------- SIMULATOR TAB REPORT ----------------
-    drawSectionHeader("1. Variáveis de Entrada Cenarizadas");
-    drawRow("Periodo de Cálculo Parametrizado", simPeriod === "annual" ? "Anual" : "Mensal");
-    drawRow("Rendimentos Ordinários Tributados (Alíquota Progressiva)", formatCurrency(simTaxableIncome));
-    drawRow("Rendimentos de Aplicações Financeiras (Tributado definitivo a 15%)", formatCurrency(simFinancialIncome));
-    drawRow("Rendimento de Atividade Rural (Alíquota Definitiva de 5,5%)", formatCurrency(simRuralIncome));
-    drawRow("Lucros e Dividendos Tributados (Retenção do IRPF Mínimo, pós dez/2025)", formatCurrency(simTaxedDividends));
-    drawRow("Lucros e Dividendos Isentos (Crédito Pré-2026 ou < R$ 50k mensais)", formatCurrency(simExemptDividends));
-
-    const modeText =
-      simDeductionMode === "simplified"
-        ? "Simplificado (Desconto Linear 20%)"
-        : `Deduções Completas (${simDependents} Dependentes e Deduções de Apoio)`;
-    drawRow("Regime de Dedução Adotado para o IRPF Geral", modeText);
-    drawRow("Valor Máximo Abatido das Deduções", formatCurrency(simResults.deductionAmount), true);
-    y += 4;
-
-    drawSectionHeader("2. Simulação pelo Regime Tradicional Clássico");
-    drawRow("Base de Cálculo Líquida do IRPF Progressivo", formatCurrency(simResults.netBase));
-    drawRow("Imposto Apurado sobre Renda Progressiva", formatCurrency(simResults.progressiveTaxDue));
-    drawRow("Imposto Retido sobre Aplicações Financeiras", formatCurrency(simResults.financialTaxDue));
-    drawRow("Imposto sobre Ganhos de Atividade Rural", formatCurrency(simResults.ruralTaxDue));
-
-    y += 2;
-    drawRow("Alíquota Individual Efetiva Ordinária", formatPercent(simResults.standardEffectiveRate / 100));
-    drawRow("Imposto Total Devido pelas Vias Clássicas (A)", formatCurrency(simResults.standardTaxDue), true);
-    y += 4;
-
-    drawSectionHeader("3. Mensuração sob a Regra de Piso IRPF Mínimo");
-    drawRow("Base Operacional Consolidada (Consolidação de Rendimentos Sujeitos)", formatCurrency(simResults.minimumBase));
-    drawRow("Gatilho Legal / Alíquota Legal Efetiva do Piso", formatPercent(simResults.minimumRate));
-    drawRow("Montante Mínimo Devido Global (B)", formatCurrency(simResults.minimumTaxDue), true);
-    y += 4;
-
-    drawSectionHeader("4. Resumo de Diferenciais de Caixa");
-    drawRow("Imposto Mínimo Devido Exigido (B)", formatCurrency(simResults.minimumTaxDue));
-    drawRow("Imposto Clássico Pago Correspondente (A)", formatCurrency(simResults.standardTaxDue));
-    y += 4;
-    ensureSpace(32);
-
-    let colorBorder: [number, number, number] = [35, 135, 131]; // GSGA secondary
-    let bigTitle = "CONFORMIDADE CONFIRMADA (ISENTO DE IMPOSTO ADICIONAL)";
-    let bigValue = "RESULTADO CONFORME";
-    let textDesc =
-      "O imposto de renda apurado pelas vias clássicas nas faixas previstas já cumpre ou supera o teto mínimo obrigatório sob o cálculo global. Não há necessidade de recolhimento complementar de imposto.";
-
-    if (simResults.additionalMinTax > 0) {
-      colorBorder = [233, 75, 65]; // GSGA coral – tax due
-      bigTitle = "IRPFM A RECOLHER";
-      bigValue = `Diferença a Pagar: ${formatCurrency(simResults.additionalMinTax)}`;
-      textDesc =
-        "O imposto devido sob as regras tradicionais ficou abaixo do piso mínimo de alíquota efetiva global. É devida a compensação correspondente para atingir a conformidade legal do IRPF Mínimo.";
-    }
-
-    // Draw final card outline
-    doc.setFillColor(242, 247, 247);
-    doc.rect(10, y, 190, 26, "F");
-
-    doc.setFillColor(colorBorder[0], colorBorder[1], colorBorder[2]);
-    doc.rect(10, y, 1.5, 26, "F"); // highlight side strip
-
-    doc.setTextColor(colorBorder[0], colorBorder[1], colorBorder[2]);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(8);
-    doc.text(bigTitle, 14, y + 5);
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(13);
-    doc.text(bigValue, 14, y + 12);
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(7.5);
-    doc.setTextColor(95, 105, 104);
-    const splitDesc = doc.splitTextToSize(textDesc, 180);
-    doc.text(splitDesc, 14, y + 17);
-
-    y += 30;
+  constructor(doc: jsPDF, private assets: Assets) {
+    this.doc = doc;
   }
 
-  // ---------------- LEGAL GLOSSARY (GLOSSÁRIO EXPLICATIVO PARA O CLIENTE) ----------------
-  drawSectionHeader("NOTAS METODOLÓGICAS E ENQUADRAMENTO ANALÍTICO");
+  private font(weight: "normal" | "semibold" | "bold", size: number, color: RGB) {
+    const style = this.assets.font === "Inter" ? weight : weight === "normal" ? "normal" : "bold";
+    this.doc.setFont(this.assets.font, style);
+    this.doc.setFontSize(size);
+    this.doc.setTextColor(...color);
+  }
 
-  drawParagraph(
-    "• Rendimentos de Alíquota Progressiva: Refere-se a rendimentos tributáveis clássicos como salários, pró-labore de sócios, consultorias, serviços autônomos e aluguéis. Estão sujeitos às deduções do modelo tradicional de IRPF.",
-    7.5,
-    "normal",
-    [68, 76, 75],
-    3.2
+  private fill(color: RGB) {
+    this.doc.setFillColor(...color);
+  }
+
+  // Starts a page with the template chrome and the given heading.
+  page(heading: PageHeading, isFirst = false) {
+    if (!isFirst) this.doc.addPage();
+    this.heading = heading;
+    const d = this.doc;
+
+    this.fill(C.primary);
+    d.rect(0, 0, PAGE_W, 22.5, "F");
+    this.fill(C.secondary);
+    d.rect(705, 0, 73.5, 22.5, "F");
+    this.fill(C.bandLine);
+    d.rect(0, 22.5, PAGE_W, 6, "F");
+
+    this.fill(C.coral);
+    d.rect(LEFT, 59.2, 2.3, 54.8, "F");
+    this.font("bold", 8, C.secondary);
+    d.text(heading.eyebrow.toUpperCase(), 75.9, 67, { charSpace: 1.2 });
+    this.font("bold", 19, C.primary);
+    d.text(heading.title.toUpperCase(), 75.9, 94);
+    this.font("normal", 9.5, C.muted);
+    d.text(heading.subtitle, 75.9, 111.5);
+
+    if (this.assets.logo) d.addImage(this.assets.logo, "PNG", 610.5, 62.25, 167.25, 33.75);
+
+    this.y = CONTENT_TOP;
+  }
+
+  // Continuation page with the same heading (used when a table overflows).
+  private continuation() {
+    if (!this.heading) return;
+    this.page({ ...this.heading, subtitle: `${this.heading.subtitle} (continuação)` });
+  }
+
+  private ensure(height: number) {
+    if (this.y + height > CONTENT_BOTTOM) this.continuation();
+  }
+
+  callout(text: string, tone: "alert" | "neutral", title?: string) {
+    const d = this.doc;
+    const textWidth = WIDTH - 35;
+    this.font("normal", 9.5, C.body);
+    const lines = d.splitTextToSize(text, textWidth);
+    const titleHeight = title ? 15 : 0;
+    const height = 12.5 + titleHeight + lines.length * 14 + 6;
+    this.ensure(height + 16);
+
+    this.fill(tone === "alert" ? C.coralTint : C.tealTint);
+    d.rect(LEFT, this.y, WIDTH, height, "F");
+    this.fill(tone === "alert" ? C.coral : C.secondary);
+    d.rect(LEFT, this.y, 3, height, "F");
+
+    let ty = this.y + 22.5;
+    if (title) {
+      this.font("bold", 9.5, tone === "alert" ? C.coral : C.primary);
+      d.text(title, 76.7, ty);
+      ty += titleHeight;
+    }
+    this.font("normal", 9.5, C.body);
+    d.text(lines, 76.7, ty, { lineHeightFactor: 14 / 9.5 });
+    this.y += height + 16;
+  }
+
+  table(columns: Column[], rows: Row[]) {
+    const d = this.doc;
+    const header = () => {
+      this.fill(C.primary);
+      d.rect(LEFT, this.y, WIDTH, 31.5, "F");
+      this.cells(columns, columns.map((c) => c.label), this.y, 31.5, "header");
+      this.y += 31.5;
+    };
+    this.ensure(31.5 + 31);
+    header();
+
+    for (const row of rows) {
+      const kind = row.kind ?? "normal";
+      const height = kind === "total" ? 30.7 : 30;
+      if (this.y + height > CONTENT_BOTTOM) {
+        this.continuation();
+        header();
+      }
+      if (kind === "highlight") {
+        this.fill(C.tealTint);
+        d.rect(LEFT, this.y, WIDTH, height, "F");
+      } else if (kind === "total") {
+        this.fill(C.primary);
+        d.rect(LEFT, this.y, WIDTH, height, "F");
+      }
+      if (kind !== "total") {
+        this.fill(C.rule);
+        d.rect(LEFT, this.y + height - 0.75, WIDTH, 0.75, "F");
+      }
+      this.cells(columns, row.cells, this.y, height, kind);
+      this.y += height;
+    }
+    this.y += 10;
+  }
+
+  private cells(columns: Column[], values: string[], top: number, height: number, kind: RowKind | "header") {
+    const d = this.doc;
+    const baseline = top + height / 2 + 3.4;
+    let x = LEFT;
+    columns.forEach((col, i) => {
+      if (kind === "header" || kind === "total") {
+        if (i > 0) {
+          this.fill(C.headerDivider);
+          d.rect(x, top, 0.75, height, "F");
+        }
+        this.font(kind === "header" ? "semibold" : "bold", kind === "header" ? 9.5 : 10.5, C.white);
+      } else if (kind === "highlight") {
+        this.font("semibold", 10, C.primary);
+      } else {
+        this.font("normal", 10, C.primary);
+      }
+      const value = values[i] ?? "";
+      const align = col.align ?? (i === 0 ? "left" : "right");
+      const maxWidth = col.width - 28;
+      const text = d.splitTextToSize(value, maxWidth)[0] ?? "";
+      if (align === "left") d.text(text, x + 14.5, baseline);
+      else if (align === "center") d.text(text, x + col.width / 2, baseline, { align: "center" });
+      else d.text(text, x + col.width - 14.2, baseline, { align: "right" });
+      x += col.width;
+    });
+  }
+
+  footnote(text: string) {
+    this.font("normal", 7.5, C.muted);
+    const lines = this.doc.splitTextToSize(text, WIDTH);
+    this.ensure(lines.length * 10 + 4);
+    this.doc.text(lines, LEFT + 0.3, this.y + 6, { lineHeightFactor: 10 / 7.5 });
+    this.y += lines.length * 10 + 14;
+  }
+
+  paragraph(text: string, width = 600) {
+    this.font("normal", 9.5, C.body);
+    const lines = this.doc.splitTextToSize(text, width);
+    this.ensure(lines.length * 14.5 + 6);
+    this.doc.text(lines, LEFT, this.y + 10, { lineHeightFactor: 14.5 / 9.5 });
+    this.y += lines.length * 14.5 + 8;
+  }
+
+  subheading(text: string) {
+    this.ensure(30);
+    this.font("bold", 10.5, C.primary);
+    this.doc.text(text, LEFT, this.y + 12);
+    this.y += 22;
+  }
+
+  // Footer on every page, drawn at the end so the page count is known.
+  footers() {
+    const d = this.doc;
+    const total = d.getNumberOfPages();
+    for (let i = 1; i <= total; i++) {
+      d.setPage(i);
+      d.setDrawColor(...C.coral);
+      d.setLineWidth(0.75);
+      d.roundedRect(59.6, 544.1, 225.8, 16.5, 8.25, 8.25, "S");
+      this.font("bold", 7, C.coral);
+      d.text(FOOTER_PILL, 172.5, 554.6, { align: "center", charSpace: 0.7 });
+      this.font("normal", 7, C.muted);
+      d.text(`${FIRM}   ${i}/${total}`, RIGHT, 554.6, { align: "right" });
+      this.fill(C.coral);
+      d.rect(834.8, 552.8, PAGE_W - 834.8, PAGE_H - 552.8, "F");
+    }
+  }
+}
+
+// ------------------------------------------------------------------ content
+const brl = (v: number) => formatCurrency(v);
+const dash = (v: number) => (Math.abs(v) < 0.005 ? "—" : brl(v));
+
+const TECHNICAL_MESSAGE = [
+  "O IRPF Mínimo, instituído pela Lei nº 15.270/2025, estabelece uma tributação mínima para pessoas físicas de alta renda, com alíquotas efetivas de até 10%, conforme o nível de rendimentos anuais.",
+  "Diferentemente da sistemática tradicional, que prevê a isenção de lucros e dividendos distribuídos à pessoa física, o novo regime considera determinados rendimentos na apuração de uma base de cálculo ampliada, observadas as exclusões e deduções expressamente previstas em lei.",
+  "O mecanismo busca verificar se a tributação suportada pelo contribuinte ao longo do ano atingiu o patamar mínimo exigido. Caso contrário, poderá haver a incidência de Imposto de Renda da Pessoa Física Mínimo (IRPFM), calculado conforme as regras legais aplicáveis.",
+];
+
+const DEDUCTIONS_DYNAMIC =
+  "Na declaração de ajuste anual, deduções como despesas médicas, despesas com instrução, dependentes ou o desconto simplificado reduzem a base de cálculo e, por consequência, o imposto devido. O IRPFM, por sua vez, é apurado sobre uma base ampliada de rendimentos, sem essas deduções, e o imposto apurado na declaração de ajuste é considerado na redução do valor devido a título de IRPFM. " +
+  "Por isso, quando a tributação do contribuinte fica abaixo do patamar mínimo e há IRPFM a recolher, a economia obtida com deduções na declaração de ajuste é compensada por um aumento equivalente do IRPFM, e o benefício financeiro dessas deduções deixa de existir. Quando a tributação já supera o patamar mínimo, as deduções mantêm integralmente o seu efeito.";
+
+const METHOD_NOTES = [
+  "Base de cálculo: rendimentos tributáveis, rendimentos sujeitos à tributação exclusiva ou definitiva e lucros e dividendos posteriores a 2025. Rendimentos isentos como poupança, LCI, LCA, CRI, CRA, fundos imobiliários, doações e heranças ficam fora da base.",
+  "Lucros e dividendos deliberados até 31/12/2025 não integram a base. Na falta de informação sobre a deliberação, a parcela foi tratada como posterior a 2025.",
+  "Imposto pago: imposto retido ou recolhido no ano e imposto sobre a tributação exclusiva; na falta de informação desse imposto, presume-se a alíquota de 15%.",
+  "Redutor do art. 16-B, por fonte pagadora: parcela posterior a 2025 × (alíquota efetiva de IRPJ e CSLL da empresa + alíquota do IRPF mínimo − alíquota nominal do setor), limitado ao saldo devido.",
+];
+
+export async function generatePdfReport(params: GeneratePdfReportParams) {
+  const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
+  const assets = await loadAssets(doc);
+  const r = new Report(doc, assets);
+  const issued = new Date().toLocaleDateString("pt-BR");
+  const eyebrow = "IRPF Mínimo · Lei nº 15.270/2025";
+
+  if (params.activeTab === "detailed") detailedPages(r, params, eyebrow, issued);
+  else simulatorPages(r, params, eyebrow, issued);
+
+  // Technical message (both modes)
+  r.page({ eyebrow, title: "Mensagem técnica", subtitle: "Regime do IRPF mínimo e efeitos sobre a apuração" });
+  TECHNICAL_MESSAGE.forEach((p) => r.paragraph(p, WIDTH));
+  r.y += 6;
+  r.callout(DEDUCTIONS_DYNAMIC, "alert", "Dinâmica fiscal relevante: o efeito das deduções");
+  r.subheading("Notas metodológicas");
+  METHOD_NOTES.forEach((n) => r.paragraph(`• ${n}`, WIDTH));
+  r.footnote("Simulação de caráter consultivo, elaborada com base nos dados informados e nas regras da Lei nº 15.270/2025. Não substitui a declaração nem a análise individual de cada caso.");
+
+  r.footers();
+  const name = params.activeTab === "detailed" ? "apuracao_irpf_minimo" : "simulacao_irpf_minimo";
+  doc.save(`${name}_${new Date().toISOString().split("T")[0]}.pdf`);
+}
+
+function detailedPages(r: Report, p: GeneratePdfReportParams, eyebrow: string, issued: string) {
+  const res = p.results;
+  const div = res.dividends;
+
+  // 1. Result
+  r.page({ eyebrow, title: "Apuração do IRPF mínimo", subtitle: `Memória de cálculo – emitido em ${issued}` }, true);
+  if (res.additionalTax > 0) {
+    r.callout(
+      `A tributação suportada no ano não alcança o patamar mínimo exigido. Há IRPFM a recolher de ${brl(res.additionalTax)}, conforme demonstrado na tabela abaixo.`,
+      "alert"
+    );
+  } else if (res.refund > 0) {
+    r.callout(
+      `A tributação suportada no ano supera o patamar mínimo. A retenção sobre lucros e dividendos gera restituição de ${brl(res.refund)}, conforme demonstrado na tabela abaixo.`,
+      "neutral"
+    );
+  } else {
+    r.callout("A tributação suportada no ano alcança o patamar mínimo exigido. Não há IRPFM a recolher, conforme demonstrado na tabela abaixo.", "neutral");
+  }
+  const rows: Row[] = [
+    { cells: ["Base de cálculo sujeita ao IRPF mínimo", brl(res.subjectBase)] },
+    { cells: ["Alíquota efetiva do IRPF mínimo", formatPercent(res.minimumAliquot)] },
+    { cells: ["IRPF mínimo devido", brl(res.minimumTaxDue)], kind: "highlight" },
+    { cells: ["(−) Imposto pago ou retido no ano", dash(res.totalTaxPaid)] },
+    { cells: ["(−) Redutor do art. 16-B", dash(res.reduction16B)] },
+  ];
+  if (res.refund > 0) rows.push({ cells: ["Restituição da retenção sobre dividendos", brl(res.refund)], kind: "highlight" });
+  rows.push({ cells: ["IRPFM a recolher", brl(res.additionalTax)], kind: "total" });
+  r.table([{ label: "Descrição", width: WIDTH - 180 }, { label: "Valor", width: 180 }], rows);
+  const notes = ["Valores em R$."];
+  if (res.presumedExclusiveTax > 0) notes.push(`O imposto pago inclui ${brl(res.presumedExclusiveTax)} presumidos à alíquota de 15% sobre a tributação exclusiva sem imposto informado.`);
+  if (div.protectedTotal > 0) notes.push(`Lucros e dividendos deliberados até 2025 (${brl(div.protectedTotal)}) não integram a base.`);
+  if (div.sourcesMissingPjData > 0) notes.push(`${div.sourcesMissingPjData} fonte(s) pagadora(s) sem dados da empresa: redutor do art. 16-B não calculado para elas.`);
+  r.footnote(notes.join(" "));
+
+  // 2. Composition
+  r.page({ eyebrow, title: "Composição da base de cálculo", subtitle: "Rendimentos e imposto considerados na apuração" });
+  const incomeRows: Row[] = p.incomeItems
+    .filter((i) => i.value !== 0)
+    .map((i) => ({ cells: [i.label, i.isSubject ? "Sim" : "Não", brl(i.value)] }));
+  if (div.posteriorTotal > 0) incomeRows.push({ cells: ["Lucros e dividendos posteriores a 2025", "Sim", brl(div.posteriorTotal)] });
+  if (div.protectedTotal > 0) incomeRows.push({ cells: ["Lucros e dividendos deliberados até 2025", "Não", brl(div.protectedTotal)] });
+  incomeRows.push({ cells: ["Base de cálculo sujeita ao IRPF mínimo", "", brl(res.subjectBase)], kind: "total" });
+  r.table(
+    [
+      { label: "Rendimento", width: WIDTH - 320 },
+      { label: "Entra na base", width: 140, align: "center" },
+      { label: "Valor", width: 180 },
+    ],
+    incomeRows
   );
 
-  drawParagraph(
-    "• Aplicações Financeiras: Consiste em retornos líquidos de investimentos sujeitos à tributação final ou exclusiva na fonte de 15% (Renda Fixa e Fundos de Investimentos). Conforme regramento do piso legal, seu valor bruto total compõe a base do piso para assegurar o cálculo da alíquota efetiva.",
-    7.5,
-    "normal",
-    [68, 76, 75],
-    3.2
-  );
+  r.y += 8;
+  const taxRows: Row[] = p.taxItems.filter((t) => t.value !== 0).map((t) => ({ cells: [t.label, brl(t.value)] }));
+  if (res.presumedExclusiveTax > 0) taxRows.push({ cells: ["Imposto presumido sobre a tributação exclusiva (15%)", brl(res.presumedExclusiveTax)] });
+  if (div.withholdingTotal > 0) taxRows.push({ cells: ["Retenção de 10% sobre lucros e dividendos", brl(div.withholdingTotal)] });
+  taxRows.push({ cells: ["Imposto pago ou retido considerado", brl(res.totalTaxPaid)], kind: "total" });
+  r.table([{ label: "Imposto pago ou retido", width: WIDTH - 180 }, { label: "Valor", width: 180 }], taxRows);
+  r.footnote("Valores em R$. O imposto devido na declaração de ajuste anual não é somado ao imposto pago, para que o mesmo imposto não seja considerado duas vezes.");
 
-  drawParagraph(
-    "• Atividade Rural: Compreende o saldo de ganhos líquidos decorrentes de exploração agropecuária, pesqueira ou agroindustrial e florestal. A alíquota nominal padrão é mantida na forma de 5,5% efetiva, contabilizada integralmente no piso global.",
-    7.5,
-    "normal",
-    [68, 76, 75],
-    3.2
-  );
+  // 3. Dividend sources
+  if (p.dividendSources.length > 0) {
+    r.page({ eyebrow, title: "Lucros e dividendos por fonte", subtitle: "Alocação entre parcela deliberada até 2025 e posterior, e redutor do art. 16-B" });
+    const byId = new Map(div.perSource.map((x) => [x.id, x]));
+    const rows: Row[] = p.dividendSources.map((s) => {
+      const x = byId.get(s.id);
+      const rate = x?.effectiveRate == null ? "—" : formatPercent(x.effectiveRate);
+      return {
+        cells: [s.name + (s.isSimples ? " (Simples)" : ""), brl(s.total), dash(Math.min(s.protectedAmount, s.total)), dash(x?.posterior ?? 0), rate, dash(x?.redutor ?? 0)],
+      };
+    });
+    rows.push({ cells: ["Total", brl(div.total), dash(div.protectedTotal), dash(div.posteriorTotal), "", dash(div.redutorPotential)], kind: "total" });
+    r.table(
+      [
+        { label: "Fonte pagadora", width: WIDTH - 590 },
+        { label: "Total recebido", width: 118 },
+        { label: "Deliberado até 2025", width: 128 },
+        { label: "Posterior a 2025", width: 118 },
+        { label: "Alíq. efetiva PJ", width: 106 },
+        { label: "Redutor 16-B", width: 120 },
+      ],
+      rows
+    );
+    r.footnote(
+      `Valores em R$. Redutor por fonte = parcela posterior × (alíquota efetiva de IRPJ e CSLL + alíquota do IRPF mínimo − alíquota nominal do setor). Soma das fontes: ${brl(div.redutorPotential)}; redutor aplicado, limitado ao saldo devido: ${brl(res.reduction16B)}.`
+    );
+  }
+}
 
-  drawParagraph(
-    "• Lucros e Dividendos Trib. (Pós-Dez/2025): Nova sistemática de retenção sobre lucros deliberados após 2025. Esses valores integram a base de cálculo do IRPF mínimo.",
-    7.5,
-    "normal",
-    [68, 76, 75],
-    3.2
+function simulatorPages(r: Report, p: GeneratePdfReportParams, eyebrow: string, issued: string) {
+  const s = p.simResults;
+  const period = p.simPeriod === "annual" ? "anual" : "mensal";
+  r.page({ eyebrow, title: "Simulação do IRPF mínimo", subtitle: `Simulação ${period} por faixas de renda – emitido em ${issued}` }, true);
+  if (s.additionalMinTax > 0) {
+    r.callout(`Na composição simulada, a tributação não alcança o patamar mínimo. Haveria IRPFM a recolher de ${brl(s.additionalMinTax)}.`, "alert");
+  } else {
+    r.callout("Na composição simulada, a tributação alcança o patamar mínimo exigido. Não haveria IRPFM a recolher.", "neutral");
+  }
+  r.table(
+    [{ label: "Descrição", width: WIDTH - 180 }, { label: "Valor", width: 180 }],
+    [
+      { cells: ["Rendimentos tributáveis pela tabela progressiva", brl(p.simTaxableIncome)] },
+      { cells: ["Rendimentos de aplicações financeiras (15%)", dash(p.simFinancialIncome)] },
+      { cells: ["Resultado da atividade rural", dash(p.simRuralIncome)] },
+      { cells: ["Lucros e dividendos posteriores a 2025", dash(p.simTaxedDividends)] },
+      { cells: ["Lucros e dividendos isentos (fora da base)", dash(p.simExemptDividends)] },
+      { cells: ["Imposto pelas regras ordinárias", brl(s.standardTaxDue)], kind: "highlight" },
+      { cells: ["Base de cálculo do IRPF mínimo", brl(s.minimumBase)] },
+      { cells: ["Alíquota efetiva do IRPF mínimo", formatPercent(s.minimumRate)] },
+      { cells: ["IRPF mínimo devido", brl(s.minimumTaxDue)], kind: "highlight" },
+      { cells: ["IRPFM a recolher", brl(s.additionalMinTax)], kind: "total" },
+    ]
   );
-
-  drawParagraph(
-    "• Lucros e Dividendos Isentos (Pré-2026 ou < 50k/mês): Rendimentos que continuam plenamente isentos do IRPF ordinário e que NÃO integram o computo do IRPF Mínimo, resguardando direitos adquiridos ou pequenas distribuições de renda recorrente.",
-    7.5,
-    "normal",
-    [68, 76, 75],
-    3.2
-  );
-
-  drawParagraph(
-    "• Redutor (Artigo 16-B): reduz o IRPF Mínimo quando a soma da alíquota efetiva de IRPJ e CSLL da pessoa jurídica pagadora com a alíquota efetiva do IRPF Mínimo excede a alíquota nominal do setor (34% para as pessoas jurídicas em geral, 40% para seguradoras, capitalização e demais instituições financeiras com CSLL de 15%, e 45% para bancos). O redutor corresponde ao excedente aplicado sobre os lucros e dividendos recebidos daquela fonte.",
-    7.5,
-    "normal",
-    [68, 76, 75],
-    3.2
-  );
-
-  // Footer signature
-  ensureSpace(20);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(6.8);
-  doc.setTextColor(130, 140, 139);
-  doc.text(
-    `Simulação de caráter consultivo, elaborada com base nos dados informados e nas regras da Lei nº 15.270/2025.`,
-    10,
-    y
-  );
-  doc.text(
-    `IMPORTANTE: Este documento é exclusivamente opinativo-analítico para subsidiar tomada de decisão e planejamento privado, não substituindo declarações nem eximindo obrigações federais oficiais.`,
-    10,
-    y + 3.5
-  );
-
-  // Save File
-  const nameStr = activeTab === "detailed" ? "apuracao_detalhada_irpf" : "simulacao_faixas_irpf";
-  doc.save(`${nameStr}_${new Date().toISOString().split("T")[0]}.pdf`);
+  const deduction =
+    p.simDeductionMode === "simplified" ? "desconto simplificado" : `deduções completas (${p.simDependents} dependente${p.simDependents === 1 ? "" : "s"})`;
+  r.footnote(`Valores em R$. Imposto ordinário calculado com ${deduction} de ${brl(s.deductionAmount)}, alíquota efetiva de ${formatPercent(s.standardEffectiveRate / 100)}.`);
 }
