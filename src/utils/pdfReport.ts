@@ -121,7 +121,7 @@ export function generatePdfReport(params: GeneratePdfReportParams) {
   doc.setFontSize(8);
   doc.setFont("helvetica", "normal");
   doc.text(`Data de Emissão: ${new Date().toLocaleDateString("pt-BR")} às ${new Date().toLocaleTimeString("pt-BR")}`, 10, y);
-  doc.text(`Escopo do Documento: Parecer Prévio de Mesa de Planejamento Tributário Familiar & Corporativo`, 10, y + 4);
+  doc.text(`Escopo: simulação da apuração do IRPF mínimo (Lei nº 15.270/2025)`, 10, y + 4);
   doc.text(`Método Aplicado: ${activeTab === "detailed" ? "Ficha Detalhada Individual" : "Simulador de Parâmetros Globais"}`, 10, y + 8);
   y += 15;
 
@@ -171,42 +171,54 @@ export function generatePdfReport(params: GeneratePdfReportParams) {
   };
 
   // ---------------- EXPLANATORY MEMORANDUM (CARTA AO CLIENTE) ----------------
-  drawSectionHeader("MENSAGEM TÉCNICA: SUMÁRIO DO REGIME IRPF MÍNIMO");
+  drawSectionHeader("Mensagem técnica");
 
+  // Text approved by the user (GSGA-PR).
   drawParagraph(
-    "O IRPF Mínimo, implementado a partir da regulamentação da Emenda Constitucional da Reforma Tributária e disciplinado no Estado pela Lei nº 15.270/2025, estabelece que contribuintes com alta capacidade econômica devem arcar com uma tributação efetiva mínima global de até 12% sobre seus rendimentos brutos consolidados (ou 6% para rendimentos em faixa intermediária).",
+    "O IRPF Mínimo, instituído pela Lei nº 15.270/2025, estabelece uma tributação mínima para pessoas físicas de alta renda, com alíquotas efetivas de até 10%, conforme o nível de rendimentos anuais.",
     8,
     "normal",
     [68, 76, 75]
   );
 
   drawParagraph(
-    "Diferente da sistemática clássica que permite isenção tributária integral sobre lucros e dividendos ou deduções irrestritas, o IRPF Mínimo abrange todas as formas de ganho na pessoa física em uma base operacional global consolidada única. O objetivo deste instrumento é aferir se os impostos regularmente recolhidos pelo contribuinte ao longo do ano atingiram esse piso mínimo ou se haverá cobrança de um Adicional de Compensação Estadual.",
+    "Diferentemente da sistemática tradicional, que prevê a isenção de lucros e dividendos distribuídos à pessoa física, o novo regime considera determinados rendimentos na apuração de uma base de cálculo ampliada, observadas as exclusões e deduções expressamente previstas em lei.",
     8,
     "normal",
     [68, 76, 75]
   );
 
-  // ---------------- COMMENTARY ON THE DEDUCTION PARADOX ----------------
-  ensureSpace(34);
+  drawParagraph(
+    "O mecanismo busca verificar se a tributação suportada pelo contribuinte ao longo do ano atingiu o patamar mínimo exigido. Caso contrário, poderá haver a incidência de Imposto de Renda da Pessoa Física Mínimo (IRPFM), calculado conforme as regras legais aplicáveis.",
+    8,
+    "normal",
+    [68, 76, 75]
+  );
+
+  // ---------------- EFFECT OF DEDUCTIONS ----------------
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7.5);
+  const alertMsg =
+    "Na declaração de ajuste anual, deduções como despesas médicas, despesas com instrução, dependentes ou o desconto simplificado reduzem a base de cálculo e, por consequência, o imposto devido. O IRPFM, por sua vez, é apurado sobre uma base ampliada de rendimentos, sem essas deduções, e o imposto apurado na declaração de ajuste é considerado na redução do valor devido a título de IRPFM. " +
+    "Por isso, quando a tributação do contribuinte fica abaixo do patamar mínimo e há IRPFM a recolher, a economia obtida com deduções na declaração de ajuste é compensada por um aumento equivalente do IRPFM, e o benefício financeiro dessas deduções deixa de existir. Quando a tributação já supera o patamar mínimo, as deduções mantêm integralmente o seu efeito.";
+  const splitAlert = doc.splitTextToSize(alertMsg, 184);
+  const alertHeight = 10 + splitAlert.length * 3.3 + 2;
+  ensureSpace(alertHeight + 4);
   doc.setFillColor(253, 237, 235); // light coral (alert box)
-  doc.rect(10, y, 190, 24, "F");
+  doc.rect(10, y, 190, alertHeight, "F");
   doc.setFillColor(233, 75, 65); // GSGA coral (alert)
-  doc.rect(10, y, 1, 24, "F");
+  doc.rect(10, y, 1, alertHeight, "F");
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8);
   doc.setTextColor(200, 60, 52);
-  doc.text("DINÂMICA FISCAL RELEVANTE: O EFEITO CONTRAINTUITIVO DAS DEDUÇÕES", 13, y + 5);
+  doc.text("Dinâmica fiscal relevante: o efeito das deduções", 13, y + 5);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7.5);
   doc.setTextColor(120, 40, 35);
-  const alertMsg =
-    "Na sistemática ordinária do IRPF, a declaração de deduções (como despesas médicas, educação, dependentes ou a dedução padrão de 20% do regime simplificado) reduz a base líquida de cálculo e, por consequência, reduz o imposto geral devido. No entanto, o IRPF Mínimo é estabelecido sobre uma base bruta e exige um recolhimento mínimo fixo sobre ela. Como o imposto ordinário já recolhido atua como 'crédito' para amortizar o teto do imposto mínimo, QUALQUER DEDUÇÃO aplicada no imposto clássico reduzirá o crédito utilizável, acarretando, consequentemente, em um aumento IDÊNTICO do Adicional Complementar a recolher. Na prática, abaixo da linha de incidência do IRPF Mínimo, os efeitos financeiros favoráveis das deduções clássicas são completamente neutralizados.";
-  const splitAlert = doc.splitTextToSize(alertMsg, 184);
-  doc.text(splitAlert, 13, y + 9);
-  y += 28;
+  doc.text(splitAlert, 13, y + 10);
+  y += alertHeight + 4;
 
   if (activeTab === "detailed") {
     // ---------------- DETAILED TAB REPORT ----------------
@@ -299,14 +311,14 @@ export function generatePdfReport(params: GeneratePdfReportParams) {
     let bigTitle = "RESULTADO REGULARIZADO";
     let bigValue = "R$ 0,00 (Sem Adicional)";
     let textDesc =
-      "O montante recolhido nas bases clássicas e os abatimentos por equivalência societária superam ou igualam o teto do imposto mínimo exigido para o perfil atual. Saldo tributário de compensação estadual zerado.";
+      "O imposto já pago ou retido, somado ao redutor do art. 16-B, alcança ou supera o IRPF mínimo apurado. Não há IRPFM a recolher.";
 
     if (results.additionalTax > 0) {
       colorBorder = [233, 75, 65]; // GSGA coral – tax due
       bigTitle = "ADICIONAL COMPLEMENTAR MÍNIMO EXIGIDO (A RECOLHER)";
       bigValue = formatCurrency(results.additionalTax);
       textDesc =
-        "O imposto de renda ordinário (IRPF clássico + equivalência) não atingiu o piso mínimo estipulado em lei. O contribuinte deve recolher a diferença por meio de guia de compensação estadual complementar para evitar penalidades e manter a conformidade fiscal.";
+        "O imposto já pago ou retido, somado ao redutor do art. 16-B, não alcança o IRPF mínimo apurado. A diferença corresponde ao IRPFM a recolher, apurado na declaração de ajuste anual.";
     } else if (results.refund > 0) {
       colorBorder = [35, 135, 131]; // GSGA secondary – refund
       bigTitle = "RESTITUIÇÃO DE RETENÇÕES DISPONÍVEL";
@@ -387,7 +399,7 @@ export function generatePdfReport(params: GeneratePdfReportParams) {
 
     if (simResults.additionalMinTax > 0) {
       colorBorder = [233, 75, 65]; // GSGA coral – tax due
-      bigTitle = "RECOLHEMENTO ADICIONAL DE COMPENSAÇÃO EXIGIDO";
+      bigTitle = "IRPFM A RECOLHER";
       bigValue = `Diferença a Pagar: ${formatCurrency(simResults.additionalMinTax)}`;
       textDesc =
         "O imposto devido sob as regras tradicionais ficou abaixo do piso mínimo de alíquota efetiva global. É devida a compensação correspondente para atingir a conformidade legal do IRPF Mínimo.";
@@ -446,7 +458,7 @@ export function generatePdfReport(params: GeneratePdfReportParams) {
   );
 
   drawParagraph(
-    "• Lucros e Dividendos Trib. (Pós-Dez/2025): Nova sistemática de retenção sobre lucros deliberados após 2025. Esses valores são submetidos à comparação global do imposto de renda mínimo de forma a vedar planejamentos evasivos excessivos.",
+    "• Lucros e Dividendos Trib. (Pós-Dez/2025): Nova sistemática de retenção sobre lucros deliberados após 2025. Esses valores integram a base de cálculo do IRPF mínimo.",
     7.5,
     "normal",
     [68, 76, 75],
@@ -475,7 +487,7 @@ export function generatePdfReport(params: GeneratePdfReportParams) {
   doc.setFontSize(6.8);
   doc.setTextColor(130, 140, 139);
   doc.text(
-    `Análise gerada em caráter consultivo com base nos parâmetros inseridos e no regramento simulado do IRPF Mínimo (Mesa Analítica Legal / Emenda Constitucional).`,
+    `Simulação de caráter consultivo, elaborada com base nos dados informados e nas regras da Lei nº 15.270/2025.`,
     10,
     y
   );
