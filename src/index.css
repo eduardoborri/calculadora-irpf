@@ -1,5 +1,18 @@
 @import "tailwindcss";
 
+/*
+ * Aptos (Microsoft) is used from the fonts installed on the machine — it ships
+ * with Windows 11 / Microsoft 365 and its license doesn't allow hosting the
+ * files. Each weight maps to the locally installed face, under both the
+ * full name and the PostScript name, so "light" body text and the bold
+ * headings/values each get the real face instead of a synthesized one.
+ */
+@font-face { font-family: "AptosApp"; font-weight: 300; src: local("Aptos Light"), local("Aptos-Light"); }
+@font-face { font-family: "AptosApp"; font-weight: 400; src: local("Aptos"), local("Aptos-Regular"); }
+@font-face { font-family: "AptosApp"; font-weight: 500 600; src: local("Aptos SemiBold"), local("Aptos-SemiBold"); }
+@font-face { font-family: "AptosApp"; font-weight: 700; src: local("Aptos Bold"), local("Aptos-Bold"); }
+@font-face { font-family: "AptosApp"; font-weight: 800 900; src: local("Aptos ExtraBold"), local("Aptos-ExtraBold"), local("Aptos Black"), local("Aptos-Black"); }
+
 @theme {
   --color-primary: rgb(20, 62, 60);
   --color-secondary: rgb(35, 135, 131);
@@ -7,12 +20,16 @@
   --color-text-gray: rgb(68, 76, 75);
   --color-accent: rgb(233, 75, 65);
 
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "AptosApp", "Aptos", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
 }
 
 @layer base {
   body {
     @apply bg-background text-text-gray font-sans;
+    /* Aptos Light as the default weight; bold/semibold classes keep their weight. */
+    font-weight: 300;
+    /* Aligned digits in every amount column. */
+    font-variant-numeric: tabular-nums;
   }
 }
 
