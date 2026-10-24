@@ -66,11 +66,11 @@ export function generatePdfReport(params: GeneratePdfReportParams) {
       y = 12;
 
       // Draw elegant page header line on new pages
-      doc.setFillColor(15, 23, 42); // slate deep
+      doc.setFillColor(20, 62, 60); // GSGA primary
       doc.rect(10, 10, 190, 2, "F");
 
       doc.setFont("helvetica", "normal");
-      doc.setTextColor(148, 163, 184);
+      doc.setTextColor(130, 140, 139);
       doc.setFontSize(7);
       doc.text("Relatório de Apuração IRPF Mínimo — Lei 15.270/2025", 10, 15);
       y = 22;
@@ -82,7 +82,7 @@ export function generatePdfReport(params: GeneratePdfReportParams) {
     text: string,
     fontSize = 8,
     isStyle: "normal" | "bold" | "italic" = "normal",
-    textColor = [71, 85, 105],
+    textColor = [68, 76, 75],
     lineSpacing = 3.6
   ) => {
     doc.setFont("helvetica", isStyle);
@@ -99,13 +99,13 @@ export function generatePdfReport(params: GeneratePdfReportParams) {
   };
 
   // Main Header Banner
-  doc.setFillColor(15, 23, 42); // Primary deep slate
+  doc.setFillColor(20, 62, 60); // GSGA primary
   doc.rect(10, 10, 190, 26, "F");
 
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8);
-  doc.text("SISTEMA DE ANÁLISE DE RECOMPOSIÇÃO FISCAL", 15, 17);
+  doc.text("GSGA-PR · ANÁLISE DE IRPF MÍNIMO", 15, 17);
 
   doc.setFontSize(13);
   doc.text("Relatório de Planejamento e Aferição: IRPF Mínimo", 15, 24);
@@ -117,7 +117,7 @@ export function generatePdfReport(params: GeneratePdfReportParams) {
   y = 42;
 
   // Metadata Block
-  doc.setTextColor(100, 116, 139);
+  doc.setTextColor(95, 105, 104);
   doc.setFontSize(8);
   doc.setFont("helvetica", "normal");
   doc.text(`Data de Emissão: ${new Date().toLocaleDateString("pt-BR")} às ${new Date().toLocaleTimeString("pt-BR")}`, 10, y);
@@ -127,13 +127,13 @@ export function generatePdfReport(params: GeneratePdfReportParams) {
 
   const drawSectionHeader = (title: string) => {
     ensureSpace(14);
-    doc.setFillColor(241, 245, 249);
+    doc.setFillColor(230, 241, 240);
     doc.rect(10, y, 190, 8, "F");
 
-    doc.setFillColor(15, 23, 42);
+    doc.setFillColor(20, 62, 60);
     doc.rect(10, y, 1, 8, "F"); // Side border line
 
-    doc.setTextColor(15, 23, 42);
+    doc.setTextColor(20, 62, 60);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(9);
     doc.text(title, 13, y + 5.5);
@@ -144,10 +144,10 @@ export function generatePdfReport(params: GeneratePdfReportParams) {
     ensureSpace(8);
     if (isTotal) {
       doc.setFont("helvetica", "bold");
-      doc.setTextColor(15, 23, 42);
+      doc.setTextColor(20, 62, 60);
     } else {
       doc.setFont("helvetica", "normal");
-      doc.setTextColor(71, 85, 105);
+      doc.setTextColor(68, 76, 75);
     }
     doc.setFontSize(8.5);
     doc.text(label, 12, y);
@@ -156,14 +156,14 @@ export function generatePdfReport(params: GeneratePdfReportParams) {
     if (customColor) {
       doc.setTextColor(customColor[0], customColor[1], customColor[2]);
     } else if (isTotal) {
-      doc.setTextColor(15, 23, 42);
+      doc.setTextColor(20, 62, 60);
     } else {
-      doc.setTextColor(15, 43, 80);
+      doc.setTextColor(35, 135, 131);
     }
     doc.text(valueStr, 200, y, { align: "right" });
 
     // Draw horizontal divider rule
-    doc.setDrawColor(241, 245, 249);
+    doc.setDrawColor(230, 241, 240);
     doc.setLineWidth(0.15);
     doc.line(10, y + 2.5, 200, y + 2.5);
 
@@ -177,31 +177,31 @@ export function generatePdfReport(params: GeneratePdfReportParams) {
     "O IRPF Mínimo, implementado a partir da regulamentação da Emenda Constitucional da Reforma Tributária e disciplinado no Estado pela Lei nº 15.270/2025, estabelece que contribuintes com alta capacidade econômica devem arcar com uma tributação efetiva mínima global de até 12% sobre seus rendimentos brutos consolidados (ou 6% para rendimentos em faixa intermediária).",
     8,
     "normal",
-    [71, 85, 105]
+    [68, 76, 75]
   );
 
   drawParagraph(
     "Diferente da sistemática clássica que permite isenção tributária integral sobre lucros e dividendos ou deduções irrestritas, o IRPF Mínimo abrange todas as formas de ganho na pessoa física em uma base operacional global consolidada única. O objetivo deste instrumento é aferir se os impostos regularmente recolhidos pelo contribuinte ao longo do ano atingiram esse piso mínimo ou se haverá cobrança de um Adicional de Compensação Estadual.",
     8,
     "normal",
-    [71, 85, 105]
+    [68, 76, 75]
   );
 
   // ---------------- COMMENTARY ON THE DEDUCTION PARADOX ----------------
   ensureSpace(34);
-  doc.setFillColor(254, 242, 242); // very light red/yellow tone
+  doc.setFillColor(253, 237, 235); // light coral (alert box)
   doc.rect(10, y, 190, 24, "F");
-  doc.setFillColor(220, 38, 38); // red bar
+  doc.setFillColor(233, 75, 65); // GSGA coral (alert)
   doc.rect(10, y, 1, 24, "F");
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8);
-  doc.setTextColor(185, 28, 28);
+  doc.setTextColor(200, 60, 52);
   doc.text("DINÂMICA FISCAL RELEVANTE: O EFEITO CONTRAINTUITIVO DAS DEDUÇÕES", 13, y + 5);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7.5);
-  doc.setTextColor(127, 29, 29);
+  doc.setTextColor(120, 40, 35);
   const alertMsg =
     "Na sistemática ordinária do IRPF, a declaração de deduções (como despesas médicas, educação, dependentes ou a dedução padrão de 20% do regime simplificado) reduz a base líquida de cálculo e, por consequência, reduz o imposto geral devido. No entanto, o IRPF Mínimo é estabelecido sobre uma base bruta e exige um recolhimento mínimo fixo sobre ela. Como o imposto ordinário já recolhido atua como 'crédito' para amortizar o teto do imposto mínimo, QUALQUER DEDUÇÃO aplicada no imposto clássico reduzirá o crédito utilizável, acarretando, consequentemente, em um aumento IDÊNTICO do Adicional Complementar a recolher. Na prática, abaixo da linha de incidência do IRPF Mínimo, os efeitos financeiros favoráveis das deduções clássicas são completamente neutralizados.";
   const splitAlert = doc.splitTextToSize(alertMsg, 184);
@@ -216,7 +216,7 @@ export function generatePdfReport(params: GeneratePdfReportParams) {
     if (activeIncomes.length === 0) {
       ensureSpace(8);
       doc.setFont("helvetica", "italic");
-      doc.setTextColor(148, 163, 184);
+      doc.setTextColor(130, 140, 139);
       doc.text("Nenhum rendimento ativo adicionado.", 12, y);
       y += 8;
     } else {
@@ -263,7 +263,7 @@ export function generatePdfReport(params: GeneratePdfReportParams) {
     if (activeTaxes.length === 0 && results.presumedExclusiveTax === 0 && results.dividends.withholdingTotal === 0) {
       ensureSpace(8);
       doc.setFont("helvetica", "italic");
-      doc.setTextColor(148, 163, 184);
+      doc.setTextColor(130, 140, 139);
       doc.text("Nenhum imposto antecipado ou desconto registrado.", 12, y);
       y += 8;
     } else {
@@ -295,20 +295,20 @@ export function generatePdfReport(params: GeneratePdfReportParams) {
     y += 4;
     ensureSpace(32);
 
-    let colorBorder: [number, number, number] = [30, 41, 59];
+    let colorBorder: [number, number, number] = [20, 62, 60];
     let bigTitle = "RESULTADO REGULARIZADO";
     let bigValue = "R$ 0,00 (Sem Adicional)";
     let textDesc =
       "O montante recolhido nas bases clássicas e os abatimentos por equivalência societária superam ou igualam o teto do imposto mínimo exigido para o perfil atual. Saldo tributário de compensação estadual zerado.";
 
     if (results.additionalTax > 0) {
-      colorBorder = [225, 29, 72]; // crimson rose
+      colorBorder = [233, 75, 65]; // GSGA coral – tax due
       bigTitle = "ADICIONAL COMPLEMENTAR MÍNIMO EXIGIDO (A RECOLHER)";
       bigValue = formatCurrency(results.additionalTax);
       textDesc =
         "O imposto de renda ordinário (IRPF clássico + equivalência) não atingiu o piso mínimo estipulado em lei. O contribuinte deve recolher a diferença por meio de guia de compensação estadual complementar para evitar penalidades e manter a conformidade fiscal.";
     } else if (results.refund > 0) {
-      colorBorder = [16, 185, 129]; // emerald green
+      colorBorder = [35, 135, 131]; // GSGA secondary – refund
       bigTitle = "RESTITUIÇÃO DE RETENÇÕES DISPONÍVEL";
       bigValue = formatCurrency(results.refund);
       textDesc =
@@ -316,7 +316,7 @@ export function generatePdfReport(params: GeneratePdfReportParams) {
     }
 
     // Draw final card outline
-    doc.setFillColor(248, 250, 252);
+    doc.setFillColor(242, 247, 247);
     doc.rect(10, y, 190, 26, "F");
 
     doc.setFillColor(colorBorder[0], colorBorder[1], colorBorder[2]);
@@ -333,7 +333,7 @@ export function generatePdfReport(params: GeneratePdfReportParams) {
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7.5);
-    doc.setTextColor(100, 116, 139);
+    doc.setTextColor(95, 105, 104);
     const splitDesc = doc.splitTextToSize(textDesc, 180);
     doc.text(splitDesc, 14, y + 17);
 
@@ -379,14 +379,14 @@ export function generatePdfReport(params: GeneratePdfReportParams) {
     y += 4;
     ensureSpace(32);
 
-    let colorBorder: [number, number, number] = [16, 185, 129]; // emerald
+    let colorBorder: [number, number, number] = [35, 135, 131]; // GSGA secondary
     let bigTitle = "CONFORMIDADE CONFIRMADA (ISENTO DE IMPOSTO ADICIONAL)";
     let bigValue = "RESULTADO CONFORME";
     let textDesc =
       "O imposto de renda apurado pelas vias clássicas nas faixas previstas já cumpre ou supera o teto mínimo obrigatório sob o cálculo global. Não há necessidade de recolhimento complementar de imposto.";
 
     if (simResults.additionalMinTax > 0) {
-      colorBorder = [225, 29, 72]; // crimson
+      colorBorder = [233, 75, 65]; // GSGA coral – tax due
       bigTitle = "RECOLHEMENTO ADICIONAL DE COMPENSAÇÃO EXIGIDO";
       bigValue = `Diferença a Pagar: ${formatCurrency(simResults.additionalMinTax)}`;
       textDesc =
@@ -394,7 +394,7 @@ export function generatePdfReport(params: GeneratePdfReportParams) {
     }
 
     // Draw final card outline
-    doc.setFillColor(248, 250, 252);
+    doc.setFillColor(242, 247, 247);
     doc.rect(10, y, 190, 26, "F");
 
     doc.setFillColor(colorBorder[0], colorBorder[1], colorBorder[2]);
@@ -411,7 +411,7 @@ export function generatePdfReport(params: GeneratePdfReportParams) {
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7.5);
-    doc.setTextColor(100, 116, 139);
+    doc.setTextColor(95, 105, 104);
     const splitDesc = doc.splitTextToSize(textDesc, 180);
     doc.text(splitDesc, 14, y + 17);
 
@@ -425,7 +425,7 @@ export function generatePdfReport(params: GeneratePdfReportParams) {
     "• Rendimentos de Alíquota Progressiva: Refere-se a rendimentos tributáveis clássicos como salários, pró-labore de sócios, consultorias, serviços autônomos e aluguéis. Estão sujeitos às deduções do modelo tradicional de IRPF.",
     7.5,
     "normal",
-    [71, 85, 105],
+    [68, 76, 75],
     3.2
   );
 
@@ -433,7 +433,7 @@ export function generatePdfReport(params: GeneratePdfReportParams) {
     "• Aplicações Financeiras: Consiste em retornos líquidos de investimentos sujeitos à tributação final ou exclusiva na fonte de 15% (Renda Fixa e Fundos de Investimentos). Conforme regramento do piso legal, seu valor bruto total compõe a base do piso para assegurar o cálculo da alíquota efetiva.",
     7.5,
     "normal",
-    [71, 85, 105],
+    [68, 76, 75],
     3.2
   );
 
@@ -441,7 +441,7 @@ export function generatePdfReport(params: GeneratePdfReportParams) {
     "• Atividade Rural: Compreende o saldo de ganhos líquidos decorrentes de exploração agropecuária, pesqueira ou agroindustrial e florestal. A alíquota nominal padrão é mantida na forma de 5,5% efetiva, contabilizada integralmente no piso global.",
     7.5,
     "normal",
-    [71, 85, 105],
+    [68, 76, 75],
     3.2
   );
 
@@ -449,7 +449,7 @@ export function generatePdfReport(params: GeneratePdfReportParams) {
     "• Lucros e Dividendos Trib. (Pós-Dez/2025): Nova sistemática de retenção sobre lucros deliberados após 2025. Esses valores são submetidos à comparação global do imposto de renda mínimo de forma a vedar planejamentos evasivos excessivos.",
     7.5,
     "normal",
-    [71, 85, 105],
+    [68, 76, 75],
     3.2
   );
 
@@ -457,7 +457,7 @@ export function generatePdfReport(params: GeneratePdfReportParams) {
     "• Lucros e Dividendos Isentos (Pré-2026 ou < 50k/mês): Rendimentos que continuam plenamente isentos do IRPF ordinário e que NÃO integram o computo do IRPF Mínimo, resguardando direitos adquiridos ou pequenas distribuições de renda recorrente.",
     7.5,
     "normal",
-    [71, 85, 105],
+    [68, 76, 75],
     3.2
   );
 
@@ -465,7 +465,7 @@ export function generatePdfReport(params: GeneratePdfReportParams) {
     "• Redutor (Artigo 16-B): reduz o IRPF Mínimo quando a soma da alíquota efetiva de IRPJ e CSLL da pessoa jurídica pagadora com a alíquota efetiva do IRPF Mínimo excede a alíquota nominal do setor (34% para as pessoas jurídicas em geral, 40% para seguradoras, capitalização e demais instituições financeiras com CSLL de 15%, e 45% para bancos). O redutor corresponde ao excedente aplicado sobre os lucros e dividendos recebidos daquela fonte.",
     7.5,
     "normal",
-    [71, 85, 105],
+    [68, 76, 75],
     3.2
   );
 
@@ -473,7 +473,7 @@ export function generatePdfReport(params: GeneratePdfReportParams) {
   ensureSpace(20);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(6.8);
-  doc.setTextColor(148, 163, 184);
+  doc.setTextColor(130, 140, 139);
   doc.text(
     `Análise gerada em caráter consultivo com base nos parâmetros inseridos e no regramento simulado do IRPF Mínimo (Mesa Analítica Legal / Emenda Constitucional).`,
     10,

@@ -30,7 +30,7 @@ export default function SimSliderField({
   const sliderAccentClass = accent === "primary" ? "accent-primary" : "accent-secondary";
 
   return (
-    <div className={`space-y-3 ${withTopBorder ? "pt-4 border-t border-gray-150" : ""}`}>
+    <div className={`space-y-3 ${withTopBorder ? "pt-4 border-t border-gray-200" : ""}`}>
       <div className="flex justify-between items-center text-sm">
         <label className="font-bold text-primary">{label}</label>
         <span className={`font-black px-2.5 py-1 rounded-lg ${badgeClass}`}>{formatCurrency(value)}</span>

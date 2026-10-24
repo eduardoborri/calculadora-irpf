@@ -33,6 +33,12 @@
   }
 }
 
+/* Light (300) is only for running text: small labels without an explicit
+   weight use regular (400) so they stay legible at 12px. */
+.text-xs:not([class*="font-"]) {
+  font-weight: 400;
+}
+
 .card {
   @apply bg-white rounded-xl shadow-sm border border-primary/10 overflow-hidden;
 }

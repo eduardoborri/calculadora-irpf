@@ -5,6 +5,7 @@ interface CurrencyInputProps {
   onChange: (val: number) => void;
   placeholder?: string;
   className?: string;
+  ariaLabel?: string;
 }
 
 const formatDisplay = (value: number) =>
@@ -15,6 +16,7 @@ export default function CurrencyInput({
   onChange,
   placeholder = "0,00",
   className = "",
+  ariaLabel,
 }: CurrencyInputProps) {
   const [displayValue, setDisplayValue] = useState(formatDisplay(value));
 
@@ -41,6 +43,8 @@ export default function CurrencyInput({
   return (
     <input
       type="text"
+      inputMode="decimal"
+      aria-label={ariaLabel}
       value={displayValue}
       placeholder={placeholder}
       onChange={handleChange}

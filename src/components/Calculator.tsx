@@ -17,12 +17,17 @@ import { formatCurrency } from "../utils/format";
 import { generatePdfReport } from "../utils/pdfReport";
 import DetailedView from "./DetailedView";
 import ImportDeclarationDialog from "./ImportDeclarationDialog";
+import ImportStatusBadge, { ImportInfo } from "./ImportStatusBadge";
 import Simulator from "./Simulator";
+import WelcomeScreen from "./WelcomeScreen";
 
 export default function Calculator() {
   const [incomeItems, setIncomeItems] = useState<IncomeItem[]>(DEFAULT_INCOME_ITEMS);
   const [taxItems, setTaxItems] = useState<TaxPaymentItem[]>(DEFAULT_TAX_ITEMS);
   const [dividendSources, setDividendSources] = useState<DividendSource[]>([]);
+  const [importInfo, setImportInfo] = useState<ImportInfo | null>(null);
+  // Welcome screen is shown until the user picks a way to start (or data exists).
+  const [started, setStarted] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
 
   // Simulation tab and engine state
@@ -182,6 +187,7 @@ export default function Calculator() {
         simResults.standardTaxDue
       )} registrado como pago.`
     );
+    setStarted(true);
     setActiveTab("detailed");
 
     // Auto clear message after 7 seconds
@@ -232,8 +238,10 @@ export default function Calculator() {
   const updateDividendSource = (id: string, field: keyof DividendSource, value: any) =>
     setDividendSources((prev) => prev.map((s) => (s.id === id ? { ...s, [field]: value } : s)));
 
-  const handleApplyImport = ({ fields, sources }: ParsedDirpf) => {
+  const handleApplyImport = ({ fields, sources, checks, fromOcr, fileName }: ParsedDirpf) => {
     setDividendSources(sources);
+    setImportInfo({ fileName, fromOcr, checks, importedAt: new Date() });
+    setStarted(true);
     setIncomeItems((prev) =>
       prev.map((item) => {
         const match = fields.find((f) => f.targetType === "income" && f.targetId === item.id);
@@ -330,6 +338,10 @@ export default function Calculator() {
     });
   };
 
+  const isEmpty =
+    dividendSources.length === 0 && incomeItems.every((i) => i.value === 0) && taxItems.every((t) => t.value === 0);
+  const showWelcome = !started && isEmpty;
+
   return (
     <div className="max-w-7xl mx-auto p-4 md:p-8 space-y-8">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-primary/10 pb-6">
@@ -347,14 +359,14 @@ export default function Calculator() {
         <div className="flex flex-wrap items-center gap-3">
           <button
             onClick={() => setIsImportOpen(true)}
-            className="flex items-center gap-2 text-xs bg-primary/5 text-primary px-4 py-2 rounded-full border border-primary/10 hover:bg-primary/10 transition-colors cursor-pointer"
+            className="flex items-center gap-2 text-sm font-semibold bg-white text-primary px-5 py-2 rounded-full border-2 border-primary hover:bg-primary/5 shadow-sm transition-colors cursor-pointer"
           >
             <FileText className="w-4 h-4" />
             <span>Importar Declaração IRPF</span>
           </button>
           <button
             onClick={handleExportPdf}
-            className="flex items-center gap-2 text-xs bg-primary text-white px-4 py-2 rounded-full hover:bg-primary/95 shadow-sm active:scale-95 transition-all cursor-pointer"
+            className="flex items-center gap-2 text-sm bg-primary text-white px-5 py-2.5 rounded-full hover:bg-primary/95 shadow-sm active:scale-95 transition-all cursor-pointer"
           >
             <Download className="w-4 h-4 text-white" />
             <span>Exportar Relatório PDF</span>
@@ -367,7 +379,7 @@ export default function Calculator() {
         <button
           onClick={() => setActiveTab("detailed")}
           className={`flex items-center gap-2 py-3 px-6 text-sm font-bold border-b-2 transition-all cursor-pointer ${
-            activeTab === "detailed" ? "border-primary text-primary" : "border-transparent text-gray-400 hover:text-gray-500"
+            activeTab === "detailed" ? "border-primary text-primary" : "border-transparent text-gray-500 hover:text-primary"
           }`}
         >
           <Settings2 className="w-4 h-4" />
@@ -376,7 +388,7 @@ export default function Calculator() {
         <button
           onClick={() => setActiveTab("simulator")}
           className={`flex items-center gap-2 py-3 px-6 text-sm font-bold border-b-2 transition-all cursor-pointer ${
-            activeTab === "simulator" ? "border-primary text-primary" : "border-transparent text-gray-400 hover:text-gray-500"
+            activeTab === "simulator" ? "border-primary text-primary" : "border-transparent text-gray-500 hover:text-primary"
           }`}
         >
           <TrendingUp className="w-4 h-4" />
@@ -391,17 +403,27 @@ export default function Calculator() {
             initial={{ opacity: 0, height: 0, y: -10 }}
             animate={{ opacity: 1, height: "auto", y: 0 }}
             exit={{ opacity: 0, height: 0, y: -10 }}
-            className="bg-emerald-50 border border-emerald-200 p-4 rounded-xl text-emerald-800 text-sm font-bold flex items-center justify-between shadow-sm overflow-hidden"
+            className="bg-secondary/10 border border-secondary/30 p-4 rounded-xl text-primary text-sm font-semibold flex items-center justify-between shadow-sm overflow-hidden"
           >
             <span>{simulationAppliedMessage}</span>
-            <button onClick={() => setSimulationAppliedMessage(null)} className="text-emerald-500 hover:text-emerald-700 font-bold text-xs">
+            <button onClick={() => setSimulationAppliedMessage(null)} className="text-secondary hover:text-primary font-bold text-xs">
               OK
             </button>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {activeTab === "detailed" && (
+      {importInfo && <ImportStatusBadge info={importInfo} onDismiss={() => setImportInfo(null)} />}
+
+      {activeTab === "detailed" && showWelcome && (
+        <WelcomeScreen
+          onImport={() => setIsImportOpen(true)}
+          onManual={() => setStarted(true)}
+          onSimulator={() => setActiveTab("simulator")}
+        />
+      )}
+
+      {activeTab === "detailed" && !showWelcome && (
         <DetailedView
           incomeItems={incomeItems}
           taxItems={taxItems}

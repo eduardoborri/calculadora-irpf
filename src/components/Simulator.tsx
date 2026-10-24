@@ -79,7 +79,7 @@ export default function Simulator({
           <button
             onClick={() => onPeriodChange("annual")}
             className={`px-4 py-2 text-xs font-bold rounded-lg transition-all border cursor-pointer ${
-              isAnnual ? "bg-primary text-white border-primary" : "bg-white text-gray-550 border-gray-200 hover:bg-gray-50"
+              isAnnual ? "bg-primary text-white border-primary" : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
             }`}
           >
             ANUAL (Exercício)
@@ -87,7 +87,7 @@ export default function Simulator({
           <button
             onClick={() => onPeriodChange("monthly")}
             className={`px-4 py-2 text-xs font-bold rounded-lg transition-all border cursor-pointer ${
-              !isAnnual ? "bg-primary text-white border-primary" : "bg-white text-gray-550 border-gray-200 hover:bg-gray-50"
+              !isAnnual ? "bg-primary text-white border-primary" : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
             }`}
           >
             MENSAL (Referência)
@@ -174,7 +174,7 @@ export default function Simulator({
               <button
                 onClick={() => onDeductionModeChange("simplified")}
                 className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                  simDeductionMode === "simplified" ? "bg-white text-primary shadow-sm font-extrabold" : "text-gray-400 hover:text-gray-600"
+                  simDeductionMode === "simplified" ? "bg-white text-primary shadow-sm font-extrabold" : "text-gray-500 hover:text-gray-600"
                 }`}
               >
                 Desconto Simplificado (20%)
@@ -182,7 +182,7 @@ export default function Simulator({
               <button
                 onClick={() => onDeductionModeChange("complete")}
                 className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                  simDeductionMode === "complete" ? "bg-white text-primary shadow-sm font-extrabold" : "text-gray-400 hover:text-gray-600"
+                  simDeductionMode === "complete" ? "bg-white text-primary shadow-sm font-extrabold" : "text-gray-500 hover:text-gray-600"
                 }`}
               >
                 Deduções Completas
@@ -192,7 +192,7 @@ export default function Simulator({
             {simDeductionMode === "simplified" ? (
               <div className="p-4 bg-primary/5 border border-primary/15 rounded-xl space-y-2">
                 <span className="text-xs font-bold text-primary uppercase">Regra de simplificação aplicada:</span>
-                <p className="text-[11px] text-text-gray leading-relaxed">
+                <p className="text-xs text-text-gray leading-relaxed">
                   {isAnnual
                     ? "Desconto automático linear de 20% aplicável aos rendimentos, fixado e limitado ao teto anual federal máximo de R$ 16.754,34 na Declaração Simplificada."
                     : "Desconto padrão mensal fixo no valor de R$ 564,80 para composição direta da renda mensal líquida."}
@@ -221,7 +221,7 @@ export default function Simulator({
                       className="flex-1 accent-primary h-2 bg-gray-100 rounded-lg cursor-pointer"
                     />
                   </div>
-                  <p className="text-[10px] text-text-gray">
+                  <p className="text-xs text-text-gray">
                     Desconto dedutível de {formatCurrency(isAnnual ? 2275.08 : 189.59)} por dependente registrado.
                   </p>
                 </div>
@@ -229,7 +229,7 @@ export default function Simulator({
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-primary">Outras Deduções Estimadas (Educação, Saúde etc.)</label>
                   <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg">
-                    <span className="text-gray-400 font-bold text-xs">R$</span>
+                    <span className="text-gray-500 font-bold text-xs">R$</span>
                     <CurrencyInput
                       value={simOtherDeductions}
                       onChange={onOtherDeductionsChange}
@@ -252,9 +252,9 @@ export default function Simulator({
           {/* Comparative highlight decks */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Standard Progressive card */}
-            <div className="card p-5 bg-white border border-gray-150 shadow-sm flex flex-col justify-between space-y-4">
+            <div className="card p-5 bg-white border border-gray-200 shadow-sm flex flex-col justify-between space-y-4">
               <div className="space-y-1">
-                <span className="text-[10px] opacity-70 font-bold uppercase tracking-wider text-primary">Análise IRPF</span>
+                <span className="text-xs opacity-70 font-bold uppercase tracking-wider text-primary">Análise IRPF</span>
                 <h4 className="text-sm font-extrabold text-primary flex items-center gap-1.5">
                   <FileText className="w-4 h-4 text-primary" />
                   Tabela Ordinária Geral
@@ -262,19 +262,19 @@ export default function Simulator({
               </div>
 
               <div className="space-y-1">
-                <span className="text-[11px] text-text-gray font-medium">Base de cálculo líquida:</span>
+                <span className="text-xs text-text-gray font-medium">Base de cálculo líquida:</span>
                 <p className="text-base font-bold text-primary">{formatCurrency(simResults.netBase)}</p>
               </div>
 
               <div className="pt-2 border-t border-gray-100 flex justify-between items-end">
                 <div className="space-y-1">
-                  <span className="text-[10px] text-text-gray block font-medium">Alíquota Efetiva:</span>
+                  <span className="text-xs text-text-gray block font-medium">Alíquota Efetiva:</span>
                   <span className="text-xs font-black bg-primary/5 text-primary px-2 py-0.5 rounded">
                     {formatPercent(simResults.standardEffectiveRate / 100)}
                   </span>
                 </div>
                 <div className="text-right">
-                  <span className="text-[10px] text-text-gray block font-medium">Imposto de Renda:</span>
+                  <span className="text-xs text-text-gray block font-medium">Imposto de Renda:</span>
                   <span className="text-lg font-black text-primary">{formatCurrency(simResults.standardTaxDue)}</span>
                 </div>
               </div>
@@ -283,7 +283,7 @@ export default function Simulator({
             {/* GSGA-PR Minimum card */}
             <div className="card p-5 bg-white border border-secondary/25 shadow-sm flex flex-col justify-between space-y-4">
               <div className="space-y-1">
-                <span className="text-[10px] opacity-70 font-bold uppercase tracking-wider text-secondary">REGRA MINÍMA LEGAL</span>
+                <span className="text-xs opacity-70 font-bold uppercase tracking-wider text-secondary">REGRA MINÍMA LEGAL</span>
                 <h4 className="text-sm font-extrabold text-secondary flex items-center gap-1.5">
                   <TrendingUp className="w-4 h-4 text-secondary" />
                   IRPF Mínimo (GSGA-PR)
@@ -291,19 +291,19 @@ export default function Simulator({
               </div>
 
               <div className="space-y-1">
-                <span className="text-[11px] text-text-gray font-medium">Base de cálculo global:</span>
+                <span className="text-xs text-text-gray font-medium">Base de cálculo global:</span>
                 <p className="text-base font-bold text-secondary">{formatCurrency(simResults.minimumBase)}</p>
               </div>
 
               <div className="pt-2 border-t border-gray-100 flex justify-between items-end">
                 <div className="space-y-1">
-                  <span className="text-[10px] text-text-gray block font-medium">Piso Legal Efetivo:</span>
+                  <span className="text-xs text-text-gray block font-medium">Piso Legal Efetivo:</span>
                   <span className="text-xs font-black bg-secondary/5 text-secondary px-2 py-0.5 rounded">
                     {formatPercent(simResults.minimumRate)}
                   </span>
                 </div>
                 <div className="text-right">
-                  <span className="text-[10px] text-text-gray block font-medium">Exigência Mínima:</span>
+                  <span className="text-xs text-text-gray block font-medium">Exigência Mínima:</span>
                   <span className="text-lg font-black text-secondary">{formatCurrency(simResults.minimumTaxDue)}</span>
                 </div>
               </div>
@@ -313,7 +313,7 @@ export default function Simulator({
           {/* Conclusion compare card */}
           <div
             className={`p-6 rounded-2xl shadow-md border ${
-              simResults.additionalMinTax > 0 ? "bg-accent text-white border-accent/15" : "bg-emerald-600 text-white border-emerald-500"
+              simResults.additionalMinTax > 0 ? "bg-accent text-white border-accent/15" : "bg-secondary text-white border-secondary/40"
             }`}
           >
             <div className="flex items-start gap-4">
@@ -322,8 +322,8 @@ export default function Simulator({
               </div>
               <div className="space-y-2 flex-1">
                 <div className="flex justify-between items-baseline">
-                  <span className="text-[10px] uppercase font-bold tracking-[0.15em] opacity-85 text-white">Análise de Diferencial Obrigatório</span>
-                  <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-white/20 text-white">
+                  <span className="text-xs uppercase font-bold tracking-[0.15em] opacity-85 text-white">Análise de Diferencial Obrigatório</span>
+                  <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-white/20 text-white">
                     {simResults.additionalMinTax > 0 ? "Adicional Devido" : "Cumprimento Concluído"}
                   </span>
                 </div>
@@ -373,10 +373,10 @@ export default function Simulator({
           <div className="card p-6 space-y-4 bg-white">
             <div className="flex justify-between items-center text-xs font-bold text-primary">
               <span>Enquadramento nas Alíquotas Progressivas (IRPF Geral)</span>
-              <span className="text-[11px] text-text-gray font-medium">Base Deduzida: {formatCurrency(simResults.netBase)}</span>
+              <span className="text-xs text-text-gray font-medium">Base Deduzida: {formatCurrency(simResults.netBase)}</span>
             </div>
 
-            <div className="relative w-full h-4 bg-gray-100 rounded-full overflow-hidden border border-gray-150 flex shadow-inner">
+            <div className="relative w-full h-4 bg-gray-100 rounded-full overflow-hidden border border-gray-200 flex shadow-inner">
               {simResults.brackets.map((br, index) => {
                 const previousLimit = index === 0 ? 0 : simResults.brackets[index - 1].limit;
                 const limit = br.limit === Infinity ? simResults.brackets[3].limit * 1.8 : br.limit;
@@ -394,7 +394,7 @@ export default function Simulator({
                   <div key={br.id} className="relative h-full flex" style={{ width: `${percentWidth}%` }}>
                     <div
                       className={`absolute inset-0 border-r border-white/20 ${
-                        index === simResults.activeBracketIndex ? "bg-primary/5" : "bg-gray-150/45"
+                        index === simResults.activeBracketIndex ? "bg-primary/5" : "bg-gray-200/45"
                       }`}
                     />
                     {activePercentage > 0 && <div className="absolute inset-y-0 left-0 bg-primary/75" style={{ width: `${activePercentage}%` }} />}
@@ -408,11 +408,11 @@ export default function Simulator({
                 <div
                   key={br.id}
                   className={`p-2 rounded transition-all ${
-                    index === simResults.activeBracketIndex ? "bg-primary text-white scale-102 shadow font-bold" : "bg-gray-50 text-gray-400 text-[9px]"
+                    index === simResults.activeBracketIndex ? "bg-primary text-white scale-102 shadow font-bold" : "bg-gray-50 text-gray-500 text-xs"
                   }`}
                 >
-                  <div className="uppercase opacity-75 text-[7px] mb-0.5 select-none font-black">Faixa {index + 1}</div>
-                  <div className="text-[10px] font-black">{br.label}</div>
+                  <div className="uppercase opacity-75 text-xs mb-0.5 select-none font-black">Faixa {index + 1}</div>
+                  <div className="text-xs font-black">{br.label}</div>
                 </div>
               ))}
             </div>
@@ -457,11 +457,11 @@ export default function Simulator({
                             : `De ${formatCurrency(previousLimit + 0.01)} a ${formatCurrency(br.limit)}`}
                         </td>
                         <td className="p-2.5 text-center">
-                          <span className={`px-2.5 py-0.5 rounded text-[10px] font-extrabold ${isActive ? "bg-primary text-white" : "bg-gray-100 text-gray-550"}`}>
+                          <span className={`px-2.5 py-0.5 rounded text-xs font-extrabold ${isActive ? "bg-primary text-white" : "bg-gray-100 text-gray-600"}`}>
                             {br.rate === 0 ? "Isento" : formatPercent(br.rate)}
                           </span>
                         </td>
-                        <td className="p-2.5 text-right font-mono text-[11px]">{br.deduction === 0 ? "—" : formatCurrency(br.deduction)}</td>
+                        <td className="p-2.5 text-right font-mono text-xs">{br.deduction === 0 ? "—" : formatCurrency(br.deduction)}</td>
                       </tr>
                     );
                   })}
@@ -470,7 +470,7 @@ export default function Simulator({
             </div>
 
             <div className="pt-3 flex items-center justify-between gap-4 flex-wrap">
-              <p className="text-[10px] text-text-gray font-medium leading-relaxed max-w-sm">
+              <p className="text-xs text-text-gray font-medium leading-relaxed max-w-sm">
                 * Alíquotas e deduções conforme legislação vigente. O desconto simplificado é deduzido antes do enquadramento.
               </p>
 

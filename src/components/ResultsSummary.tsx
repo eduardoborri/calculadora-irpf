@@ -1,6 +1,7 @@
 import { ChevronRight, Download, Info, TrendingUp } from "lucide-react";
 import { CalculationResult } from "../types";
 import { formatCurrency, formatPercent } from "../utils/format";
+import ResultWaterfall from "./ResultWaterfall";
 
 interface ResultsSummaryProps {
   results: CalculationResult;
@@ -23,7 +24,7 @@ export default function ResultsSummary({ results, onExportPdf }: ResultsSummaryP
             <span className="font-bold text-primary">{formatCurrency(results.subjectBase)}</span>
           </div>
           {results.dividends.total > 0 && (
-            <p className="text-[11px] text-text-gray -mt-2 text-right">
+            <p className="text-xs text-text-gray -mt-2 text-right">
               inclui {formatCurrency(results.dividends.posteriorTotal)} de dividendos posteriores a 2025; protegidos (fora da base):{" "}
               {formatCurrency(results.dividends.protectedTotal)}
             </p>
@@ -41,22 +42,24 @@ export default function ResultsSummary({ results, onExportPdf }: ResultsSummaryP
             <span className="font-bold text-secondary">{formatCurrency(results.totalTaxPaid)}</span>
           </div>
           {results.presumedExclusiveTax > 0 && (
-            <p className="text-[11px] text-text-gray -mt-2 text-right">
+            <p className="text-xs text-text-gray -mt-2 text-right">
               inclui {formatCurrency(results.presumedExclusiveTax)} presumidos (15% s/ tributação exclusiva)
             </p>
           )}
           {results.reduction16B > 0 && (
             <div className="flex justify-between items-center text-sm">
               <span className="text-text-gray font-medium">Passo 5 - Redução Art. 16-B</span>
-              <span className="font-bold text-accent">-{formatCurrency(results.reduction16B)}</span>
+              <span className="font-bold text-secondary">-{formatCurrency(results.reduction16B)}</span>
             </div>
           )}
         </div>
 
+        <ResultWaterfall results={results} />
+
         <div className="pt-6 border-t-2 border-primary/10">
           {results.additionalTax > 0 ? (
             <div className="bg-accent text-white p-5 rounded-2xl shadow-lg shadow-accent/20">
-              <p className="text-[10px] uppercase tracking-[0.2em] font-black opacity-70 mb-1">Adicional de IRPF Devido</p>
+              <p className="text-xs uppercase tracking-[0.2em] font-black opacity-70 mb-1">Adicional de IRPF Devido</p>
               <div className="flex items-center justify-between">
                 <p className="text-3xl font-black">{formatCurrency(results.additionalTax)}</p>
                 <ChevronRight className="w-6 h-6 opacity-50" />
@@ -64,7 +67,7 @@ export default function ResultsSummary({ results, onExportPdf }: ResultsSummaryP
             </div>
           ) : results.refund > 0 ? (
             <div className="bg-secondary text-white p-5 rounded-2xl shadow-lg shadow-secondary/20">
-              <p className="text-[10px] uppercase tracking-[0.2em] font-black opacity-70 mb-1">Restituição a Receber</p>
+              <p className="text-xs uppercase tracking-[0.2em] font-black opacity-70 mb-1">Restituição a Receber</p>
               <div className="flex items-center justify-between">
                 <p className="text-3xl font-black">{formatCurrency(results.refund)}</p>
                 <ChevronRight className="w-6 h-6 opacity-50" />
@@ -72,7 +75,7 @@ export default function ResultsSummary({ results, onExportPdf }: ResultsSummaryP
             </div>
           ) : (
             <div className="bg-primary text-white p-5 rounded-2xl">
-              <p className="text-[10px] uppercase tracking-[0.2em] font-black opacity-70 mb-1">Saldo de Imposto</p>
+              <p className="text-xs uppercase tracking-[0.2em] font-black opacity-70 mb-1">Saldo de Imposto</p>
               <p className="text-3xl font-black">R$ 0,00</p>
             </div>
           )}
@@ -83,7 +86,7 @@ export default function ResultsSummary({ results, onExportPdf }: ResultsSummaryP
             <Info className="w-4 h-4 text-secondary" />
             Regras Aplicadas
           </h4>
-          <ul className="text-[11px] space-y-2 text-text-gray font-medium">
+          <ul className="text-xs space-y-2 text-text-gray font-medium">
             <li className="flex gap-2">
               <span className="text-secondary">•</span>
               <span>Isenção até R$ 600.000,00 de base de cálculo sujeita.</span>
@@ -106,10 +109,6 @@ export default function ResultsSummary({ results, onExportPdf }: ResultsSummaryP
                 Redutor Art. 16-B calculado fonte a fonte = dividendos posteriores da fonte × (alíq. efetiva da PJ + alíq. do IRPF mínimo − alíq.
                 nominal do setor: 34%, 40% ou 45%). Fonte sem dados da PJ ou agrupada em "Demais fontes" não gera redutor.
               </span>
-            </li>
-            <li className="flex gap-2">
-              <span className="text-secondary">•</span>
-              <span>Cálculo de redução proporcional por fonte pagadora.</span>
             </li>
             <li className="flex gap-2">
               <span className="text-secondary">•</span>

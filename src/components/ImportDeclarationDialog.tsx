@@ -63,7 +63,7 @@ export default function ImportDeclarationDialog({ isOpen, onClose, onApply }: Im
         setStatus("needsOcr");
         return;
       }
-      showResult(parseDirpf(text));
+      showResult({ ...parseDirpf(text), fileName: file.name });
     } catch (err) {
       console.error(err);
       setErrorMessage("Não foi possível ler este PDF. Verifique se é um arquivo válido.");
@@ -76,7 +76,7 @@ export default function ImportDeclarationDialog({ isOpen, onClose, onApply }: Im
     setStatus("ocr");
     try {
       const text = (await ocrPdfPages(pendingFile, setOcrProgress)).join("\n");
-      showResult({ ...parseDirpf(text), fromOcr: true });
+      showResult({ ...parseDirpf(text), fromOcr: true, fileName: pendingFile.name });
     } catch (err) {
       console.error(err);
       setErrorMessage("A leitura por OCR falhou. Verifique a conexão (o motor de OCR é baixado na primeira vez) ou preencha manualmente.");
@@ -101,10 +101,15 @@ export default function ImportDeclarationDialog({ isOpen, onClose, onApply }: Im
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="import-dialog-title"
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col"
+      >
         <div className="flex items-center justify-between p-5 border-b border-gray-100">
-          <h2 className="text-lg font-bold text-primary">Importar Declaração de IRPF (PDF)</h2>
-          <button onClick={handleClose} className="text-gray-400 hover:text-gray-600 cursor-pointer">
+          <h2 id="import-dialog-title" className="text-lg font-bold text-primary">Importar Declaração de IRPF (PDF)</h2>
+          <button onClick={handleClose} aria-label="Fechar" className="text-gray-500 hover:text-primary cursor-pointer">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -112,7 +117,7 @@ export default function ImportDeclarationDialog({ isOpen, onClose, onApply }: Im
         <div className="p-5 space-y-4 overflow-y-auto">
           {status === "idle" && (
             <label className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-gray-200 rounded-xl p-10 cursor-pointer hover:border-primary/40 hover:bg-primary/5 transition-colors">
-              <UploadCloud className="w-8 h-8 text-gray-400" />
+              <UploadCloud className="w-8 h-8 text-gray-500" />
               <span className="text-sm font-bold text-primary">Clique para selecionar o PDF da declaração</span>
               <span className="text-xs text-text-gray text-center max-w-sm">
                 Aceita o "Recibo" ou a "Declaração Completa" exportados pelo programa da Receita Federal. O arquivo é lido inteiramente no seu
@@ -201,7 +206,7 @@ export default function ImportDeclarationDialog({ isOpen, onClose, onApply }: Im
 
               {fields.length === 0 && sources.length === 0 ? (
                 <div className="text-center p-8 space-y-2">
-                  <FileWarning className="w-8 h-8 text-gray-400 mx-auto" />
+                  <FileWarning className="w-8 h-8 text-gray-500 mx-auto" />
                   <p className="text-sm font-bold text-primary">Nenhum campo reconhecido automaticamente.</p>
                   <p className="text-xs text-text-gray">
                     O layout deste PDF pode ser diferente do esperado pelo importador. Preencha manualmente na aba "Apuração Detalhada".
@@ -238,8 +243,8 @@ export default function ImportDeclarationDialog({ isOpen, onClose, onApply }: Im
                           <div key={s.id} className="flex items-center justify-between gap-4 p-3 text-sm">
                             <span className="text-primary font-medium">
                               {s.name}
-                              {s.cnpj && <span className="text-gray-400 text-xs ml-2">{s.cnpj}</span>}
-                              {s.isSimples && <span className="text-[10px] ml-2 text-secondary font-bold">SIMPLES</span>}
+                              {s.cnpj && <span className="text-gray-500 text-xs ml-2">{s.cnpj}</span>}
+                              {s.isSimples && <span className="text-xs ml-2 text-secondary font-bold">SIMPLES</span>}
                             </span>
                             <span className="font-bold text-secondary">{formatCurrency(s.total)}</span>
                           </div>
@@ -256,7 +261,7 @@ export default function ImportDeclarationDialog({ isOpen, onClose, onApply }: Im
                   <div className="border border-gray-100 rounded-xl divide-y divide-gray-100">
                     {checks.map((c) => (
                       <div key={c.label} className="flex items-start justify-between gap-3 p-3 text-xs">
-                        <span className={`flex items-start gap-2 font-medium ${c.ok ? "text-emerald-700" : "text-accent"}`}>
+                        <span className={`flex items-start gap-2 font-medium ${c.ok ? "text-secondary" : "text-accent"}`}>
                           {c.ok ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <XCircle className="w-4 h-4 shrink-0" />}
                           {c.label}
                         </span>

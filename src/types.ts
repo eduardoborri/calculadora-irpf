@@ -95,6 +95,7 @@ export interface ParsedDirpf {
   checks: ParseCheck[];
   // True when the text came from OCR (PDF without a text layer).
   fromOcr?: boolean;
+  fileName?: string;
 }
 
 export interface TaxBracket {
