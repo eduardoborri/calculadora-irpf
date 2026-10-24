@@ -1,4 +1,5 @@
 import * as pdfjsLib from "pdfjs-dist";
+import type { TextItem } from "pdfjs-dist/types/src/display/api";
 // Vite-specific import: resolves the worker script to a served URL.
 import pdfjsWorker from "pdfjs-dist/build/pdf.worker.mjs?url";
 
@@ -72,7 +73,7 @@ export async function extractPdfPages(file: File): Promise<string[]> {
     const content = await page.getTextContent();
 
     const items: PositionedItem[] = content.items
-      .filter((item): item is { str: string; transform: number[]; width: number } => "str" in item && item.str.trim().length > 0)
+      .filter((item): item is TextItem => "str" in item && item.str.trim().length > 0)
       .map((item) => ({ text: item.str, x: item.transform[4], y: item.transform[5], width: item.width }));
 
     pages.push(reconstructReadingOrder(items));
