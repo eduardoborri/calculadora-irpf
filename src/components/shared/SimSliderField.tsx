@@ -32,8 +32,8 @@ export default function SimSliderField({
   return (
     <div className={`space-y-3 ${withTopBorder ? "pt-4 border-t border-gray-200" : ""}`}>
       <div className="flex justify-between items-center text-sm">
-        <label className="font-bold text-primary">{label}</label>
-        <span className={`font-black px-2.5 py-1 rounded-lg ${badgeClass}`}>{formatCurrency(value)}</span>
+        <label className="font-semibold text-primary">{label}</label>
+        <span className={`font-semibold px-2.5 py-1 rounded-lg ${badgeClass}`}>{formatCurrency(value)}</span>
       </div>
       <p className="text-xs text-text-gray leading-normal">{description}</p>
       <div className="flex items-center gap-4">

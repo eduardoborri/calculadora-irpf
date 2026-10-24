@@ -19,7 +19,7 @@ export default function QuickIncrementButtons({
 }: QuickIncrementButtonsProps) {
   const multiplier = isAnnual ? 1 : ANNUAL_TO_MONTHLY;
   const buttonClass =
-    "text-xs font-bold px-2.5 py-1 bg-gray-50 border border-gray-200 text-gray-600 rounded hover:bg-gray-100 active:scale-95 transition-all cursor-pointer";
+    "text-xs font-semibold px-2.5 py-1 bg-gray-50 border border-gray-200 text-gray-600 rounded hover:bg-gray-100 transition-all cursor-pointer";
 
   return (
     <div className="flex gap-2">

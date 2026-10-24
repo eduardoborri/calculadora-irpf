@@ -105,10 +105,10 @@ export default function ImportDeclarationDialog({ isOpen, onClose, onApply }: Im
         role="dialog"
         aria-modal="true"
         aria-labelledby="import-dialog-title"
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col"
+        className="bg-white rounded-lg-2xl w-full max-w-2xl max-h-[85vh] flex flex-col"
       >
         <div className="flex items-center justify-between p-5 border-b border-gray-100">
-          <h2 id="import-dialog-title" className="text-lg font-bold text-primary">Importar Declaração de IRPF (PDF)</h2>
+          <h2 id="import-dialog-title" className="text-lg font-semibold text-primary">Importar Declaração de IRPF (PDF)</h2>
           <button onClick={handleClose} aria-label="Fechar" className="text-gray-500 hover:text-primary cursor-pointer">
             <X className="w-5 h-5" />
           </button>
@@ -116,9 +116,9 @@ export default function ImportDeclarationDialog({ isOpen, onClose, onApply }: Im
 
         <div className="p-5 space-y-4 overflow-y-auto">
           {status === "idle" && (
-            <label className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-gray-200 rounded-xl p-10 cursor-pointer hover:border-primary/40 hover:bg-primary/5 transition-colors">
+            <label className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-gray-200 rounded-lg p-10 cursor-pointer hover:border-primary/40 hover:bg-primary/5 transition-colors">
               <UploadCloud className="w-8 h-8 text-gray-500" />
-              <span className="text-sm font-bold text-primary">Clique para selecionar o PDF da declaração</span>
+              <span className="text-sm font-semibold text-primary">Clique para selecionar o PDF da declaração</span>
               <span className="text-xs text-text-gray text-center max-w-sm">
                 Aceita o "Recibo" ou a "Declaração Completa" exportados pelo programa da Receita Federal. O arquivo é lido inteiramente no seu
                 navegador — nada é enviado a nenhum servidor.
@@ -138,14 +138,14 @@ export default function ImportDeclarationDialog({ isOpen, onClose, onApply }: Im
           {status === "processing" && (
             <div className="flex flex-col items-center justify-center gap-3 p-10">
               <Loader2 className="w-8 h-8 text-primary animate-spin" />
-              <span className="text-sm font-bold text-primary">Lendo o PDF...</span>
+              <span className="text-sm font-semibold text-primary">Lendo o PDF...</span>
             </div>
           )}
 
           {status === "needsOcr" && (
             <div className="flex flex-col items-center justify-center gap-3 p-8 text-center">
               <ScanText className="w-8 h-8 text-secondary" />
-              <p className="text-sm font-bold text-primary">Este PDF não tem texto pesquisável.</p>
+              <p className="text-sm font-semibold text-primary">Este PDF não tem texto pesquisável.</p>
               <p className="text-xs text-text-gray max-w-md leading-relaxed">
                 Ele foi escaneado ou o texto foi convertido em imagem/contornos. É possível tentar a leitura por <strong>OCR</strong>
                 (reconhecimento de texto na imagem): leva alguns segundos por página e o motor de OCR é baixado na primeira vez. O PDF
@@ -153,12 +153,12 @@ export default function ImportDeclarationDialog({ isOpen, onClose, onApply }: Im
                 declaração.
               </p>
               <div className="flex gap-3 pt-2">
-                <button onClick={handleReset} className="px-4 py-2 text-xs font-bold text-primary hover:bg-primary/5 rounded-lg cursor-pointer">
+                <button onClick={handleReset} className="px-4 py-2 text-xs font-semibold text-primary hover:bg-primary/5 rounded-lg cursor-pointer">
                   Escolher outro arquivo
                 </button>
                 <button
                   onClick={handleOcr}
-                  className="px-5 py-2 text-xs font-bold bg-primary text-white rounded-lg hover:bg-primary/90 cursor-pointer flex items-center gap-1.5"
+                  className="px-5 py-2 text-xs font-semibold bg-primary text-white rounded-lg hover:bg-primary/90 cursor-pointer flex items-center gap-1.5"
                 >
                   <ScanText className="w-4 h-4" /> Ler com OCR
                 </button>
@@ -169,7 +169,7 @@ export default function ImportDeclarationDialog({ isOpen, onClose, onApply }: Im
           {status === "ocr" && (
             <div className="flex flex-col items-center justify-center gap-3 p-10">
               <Loader2 className="w-8 h-8 text-primary animate-spin" />
-              <span className="text-sm font-bold text-primary">
+              <span className="text-sm font-semibold text-primary">
                 {ocrProgress?.stage === "reading"
                   ? `Lendo por OCR: página ${ocrProgress.page} de ${ocrProgress.totalPages}`
                   : "Preparando o motor de OCR..."}
@@ -185,8 +185,8 @@ export default function ImportDeclarationDialog({ isOpen, onClose, onApply }: Im
           {status === "error" && (
             <div className="flex flex-col items-center justify-center gap-3 p-10 text-center">
               <FileWarning className="w-8 h-8 text-accent" />
-              <span className="text-sm font-bold text-accent">{errorMessage}</span>
-              <button onClick={handleReset} className="text-xs font-bold text-primary underline cursor-pointer">
+              <span className="text-sm font-semibold text-accent">{errorMessage}</span>
+              <button onClick={handleReset} className="text-xs font-semibold text-primary underline cursor-pointer">
                 Tentar novamente
               </button>
             </div>
@@ -195,7 +195,7 @@ export default function ImportDeclarationDialog({ isOpen, onClose, onApply }: Im
           {status === "done" && parsed && (
             <>
               {parsed.fromOcr && (
-                <div className="p-3 rounded-xl border border-accent/30 bg-accent/5 text-xs text-accent font-medium flex gap-2">
+                <div className="p-3 rounded-lg border border-accent/30 bg-accent/5 text-xs text-accent font-medium flex gap-2">
                   <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
                   <span>
                     Valores lidos por <strong>OCR</strong>. Confira cada valor com a declaração antes de usar.{" "}
@@ -207,7 +207,7 @@ export default function ImportDeclarationDialog({ isOpen, onClose, onApply }: Im
               {fields.length === 0 && sources.length === 0 ? (
                 <div className="text-center p-8 space-y-2">
                   <FileWarning className="w-8 h-8 text-gray-500 mx-auto" />
-                  <p className="text-sm font-bold text-primary">Nenhum campo reconhecido automaticamente.</p>
+                  <p className="text-sm font-semibold text-primary">Nenhum campo reconhecido automaticamente.</p>
                   <p className="text-xs text-text-gray">
                     O layout deste PDF pode ser diferente do esperado pelo importador. Preencha manualmente na aba "Apuração Detalhada".
                   </p>
@@ -219,7 +219,7 @@ export default function ImportDeclarationDialog({ isOpen, onClose, onApply }: Im
                     alocados por padrão como <strong>posteriores a 2025</strong> (sujeitos). Informe depois a parcela deliberada até 2025 e os dados de
                     cada PJ para o redutor do Art. 16-B.
                   </p>
-                  <div className="border border-gray-100 rounded-xl divide-y divide-gray-100">
+                  <div className="border border-gray-100 rounded-lg divide-y divide-gray-100">
                     {fields.map((field) => (
                       <label key={field.targetId} className="flex items-center justify-between gap-4 p-3 cursor-pointer hover:bg-gray-50">
                         <div className="flex items-center gap-3">
@@ -231,22 +231,22 @@ export default function ImportDeclarationDialog({ isOpen, onClose, onApply }: Im
                           />
                           <span className="text-sm font-medium text-primary">{field.label}</span>
                         </div>
-                        <span className="text-sm font-bold text-secondary">{formatCurrency(field.value)}</span>
+                        <span className="text-sm font-semibold text-secondary">{formatCurrency(field.value)}</span>
                       </label>
                     ))}
                   </div>
                   {sources.length > 0 && (
                     <div className="space-y-2">
-                      <h3 className="text-xs font-bold text-primary uppercase tracking-wider">Fontes pagadoras de lucros e dividendos</h3>
-                      <div className="border border-gray-100 rounded-xl divide-y divide-gray-100">
+                      <h3 className="text-xs font-semibold text-primary">Fontes pagadoras de lucros e dividendos</h3>
+                      <div className="border border-gray-100 rounded-lg divide-y divide-gray-100">
                         {sources.map((s) => (
                           <div key={s.id} className="flex items-center justify-between gap-4 p-3 text-sm">
                             <span className="text-primary font-medium">
                               {s.name}
                               {s.cnpj && <span className="text-gray-500 text-xs ml-2">{s.cnpj}</span>}
-                              {s.isSimples && <span className="text-xs ml-2 text-secondary font-bold">SIMPLES</span>}
+                              {s.isSimples && <span className="text-xs ml-2 text-secondary font-semibold">SIMPLES</span>}
                             </span>
-                            <span className="font-bold text-secondary">{formatCurrency(s.total)}</span>
+                            <span className="font-semibold text-secondary">{formatCurrency(s.total)}</span>
                           </div>
                         ))}
                       </div>
@@ -257,8 +257,8 @@ export default function ImportDeclarationDialog({ isOpen, onClose, onApply }: Im
 
               {checks.length > 0 && (
                 <div className="space-y-2">
-                  <h3 className="text-xs font-bold text-primary uppercase tracking-wider">Conferência com os totais da declaração</h3>
-                  <div className="border border-gray-100 rounded-xl divide-y divide-gray-100">
+                  <h3 className="text-xs font-semibold text-primary">Conferência com os totais da declaração</h3>
+                  <div className="border border-gray-100 rounded-lg divide-y divide-gray-100">
                     {checks.map((c) => (
                       <div key={c.label} className="flex items-start justify-between gap-3 p-3 text-xs">
                         <span className={`flex items-start gap-2 font-medium ${c.ok ? "text-secondary" : "text-accent"}`}>
@@ -275,14 +275,14 @@ export default function ImportDeclarationDialog({ isOpen, onClose, onApply }: Im
               )}
 
               <div className="flex justify-end gap-3 pt-2">
-                <button onClick={handleReset} className="px-4 py-2 text-xs font-bold text-primary hover:bg-primary/5 rounded-lg transition-colors cursor-pointer">
+                <button onClick={handleReset} className="px-4 py-2 text-xs font-semibold text-primary hover:bg-primary/5 rounded-lg transition-colors cursor-pointer">
                   Escolher outro arquivo
                 </button>
                 {(fields.length > 0 || sources.length > 0) && (
                   <button
                     onClick={handleApply}
                     disabled={selectedIds.size === 0 && sources.length === 0}
-                    className="px-5 py-2 text-xs font-bold bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                    className="px-5 py-2 text-xs font-semibold bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
                   >
                     Aplicar {selectedIds.size} campo{selectedIds.size === 1 ? "" : "s"}
                     {sources.length > 0 ? ` + ${sources.length} fonte${sources.length === 1 ? "" : "s"}` : ""}

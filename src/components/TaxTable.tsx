@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, ReceiptText, Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { DEFAULT_TAX_ITEMS, EXCLUSIVE_TAX_ID, PRESUMED_EXCLUSIVE_TAX_RATE } from "../constants";
 import { TaxPaymentItem } from "../types";
 import { formatCurrency, formatPercent } from "../utils/format";
@@ -29,18 +29,12 @@ export default function TaxTable({ items, totalTaxPaid, presumedExclusiveTax, di
   const hiddenCount = items.length - visible.length;
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between bg-secondary/5 p-4 rounded-xl border border-secondary/10">
-        <h2 className="text-xl font-bold text-secondary flex items-center gap-2">
-          <ReceiptText className="w-6 h-6" />
-          2. Imposto Pago e Retenções
-        </h2>
-        <button
-          onClick={onAdd}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-secondary text-white text-xs font-bold rounded-lg hover:bg-secondary/90 transition-all active:scale-95 shadow-sm"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          Adicionar Linha
+    <section className="space-y-3">
+      <div className="flex items-baseline justify-between gap-4">
+        <h2 className="section-title">Imposto pago ou retido</h2>
+        <button onClick={onAdd} className="text-action">
+          <Plus className="w-4 h-4" />
+          Adicionar imposto
         </button>
       </div>
 
@@ -49,9 +43,9 @@ export default function TaxTable({ items, totalTaxPaid, presumedExclusiveTax, di
           <table className="w-full border-collapse">
             <thead>
               <tr>
-                <th className="table-header bg-secondary">Descrição do Imposto Pago</th>
-                <th className="table-header bg-secondary text-right w-48">Valor (R$)</th>
-                <th className="table-header bg-secondary w-12"></th>
+                <th className="table-header">Imposto</th>
+                <th className="table-header text-right w-44">Valor (R$)</th>
+                <th className="table-header w-12"></th>
               </tr>
             </thead>
             <tbody>
@@ -77,12 +71,12 @@ export default function TaxTable({ items, totalTaxPaid, presumedExclusiveTax, di
                   </td>
                   <td className="table-cell text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <span className="text-gray-500 text-xs font-bold">R$</span>
+                      <span className="text-gray-500 text-xs font-semibold">R$</span>
                       <CurrencyInput
                         value={item.value}
                         onChange={(val) => onUpdate(item.id, "value", val)}
                         ariaLabel={`Valor de ${item.label}`}
-                        className="w-full bg-transparent border-none focus:ring-0 p-0 text-right text-primary font-bold"
+                        className="w-full bg-transparent border-none focus:ring-0 p-0 text-right text-primary font-semibold"
                       />
                     </div>
                   </td>
@@ -98,28 +92,27 @@ export default function TaxTable({ items, totalTaxPaid, presumedExclusiveTax, di
                 </tr>
               ))}
               {dividendWithholding > 0 && (
-                <tr className="border-b border-gray-100 bg-gray-50/60">
+                <tr>
                   <td className="table-cell text-sm text-primary font-medium">
                     Retenção de 10% sobre dividendos posteriores a 2025
-                    <p className="text-xs text-secondary">Calculada na tabela de fontes pagadoras (fontes marcadas com retenção).</p>
+                    <p className="text-xs text-text-gray">Calculada na tabela de fontes pagadoras, nas fontes marcadas com retenção.</p>
                   </td>
-                  <td className="table-cell text-right text-primary font-bold">{formatCurrency(dividendWithholding)}</td>
+                  <td className="table-cell text-right text-primary font-semibold tabular-nums">{formatCurrency(dividendWithholding)}</td>
                   <td className="table-cell"></td>
                 </tr>
               )}
             </tbody>
             <tfoot>
-              <tr className="bg-secondary/5 font-bold">
-                <td className="table-cell">TOTAL DO IMPOSTO PAGO</td>
-                <td className="table-cell text-right text-secondary text-lg" colSpan={2}>
-                  {formatCurrency(totalTaxPaid)}
-                </td>
+              <tr className="table-total">
+                <td>Total considerado</td>
+                <td className="text-right tabular-nums">{formatCurrency(totalTaxPaid)}</td>
+                <td></td>
               </tr>
             </tfoot>
           </table>
         </div>
         <ShowAllRowsToggle showAll={showAll} hiddenCount={hiddenCount} onToggle={() => setShowAll((v) => !v)} />
       </div>
-    </div>
+    </section>
   );
 }

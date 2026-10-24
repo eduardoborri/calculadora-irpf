@@ -26,15 +26,12 @@ export default function IncomeTable({ items, totalGrossIncome, onAdd, onRemove, 
   const hiddenCount = items.length - visible.length;
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between bg-primary/5 p-4 rounded-xl border border-primary/10">
-        <h2 className="text-xl font-bold text-primary flex items-center gap-2">1. Rendimentos Tributáveis e Isentos</h2>
-        <button
-          onClick={onAdd}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white text-xs font-bold rounded-lg hover:bg-primary/90 transition-all active:scale-95 shadow-sm"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          Adicionar Linha
+    <section className="space-y-3">
+      <div className="flex items-baseline justify-between gap-4">
+        <h2 className="section-title">Rendimentos</h2>
+        <button onClick={onAdd} className="text-action">
+          <Plus className="w-4 h-4" />
+          Adicionar rendimento
         </button>
       </div>
 
@@ -43,9 +40,9 @@ export default function IncomeTable({ items, totalGrossIncome, onAdd, onRemove, 
           <table className="w-full border-collapse">
             <thead>
               <tr>
-                <th className="table-header">Descrição do Rendimento</th>
-                <th className="table-header text-center w-24">Sujeição</th>
-                <th className="table-header text-right w-40">Valor Bruto (R$)</th>
+                <th className="table-header">Rendimento</th>
+                <th className="table-header text-center w-28">Entra na base</th>
+                <th className="table-header text-right w-44">Valor bruto (R$)</th>
                 <th className="table-header w-12"></th>
               </tr>
             </thead>
@@ -69,23 +66,23 @@ export default function IncomeTable({ items, totalGrossIncome, onAdd, onRemove, 
                       onClick={() => onUpdate(item.id, "isSubject", !item.isSubject)}
                       aria-pressed={item.isSubject}
                       aria-label={`Sujeito ao IRPF mínimo: ${item.isSubject ? "sim" : "não"}`}
-                      className={`w-full px-3 py-1 text-xs font-bold rounded-md border transition-all active:scale-95 ${
+                      className={`w-full px-3 py-1 text-xs font-semibold rounded border transition-colors ${
                         item.isSubject
-                          ? "bg-primary text-white border-primary/20 hover:bg-primary/90 shadow-sm"
-                          : "bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-200"
+                          ? "bg-primary text-white border-primary hover:bg-primary/90"
+                          : "bg-white text-text-gray border-rule hover:bg-paper"
                       }`}
                     >
-                      {item.isSubject ? "SIM" : "NÃO"}
+                      {item.isSubject ? "Sim" : "Não"}
                     </button>
                   </td>
                   <td className="table-cell text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <span className="text-gray-500 text-xs font-bold">R$</span>
+                      <span className="text-gray-500 text-xs font-semibold">R$</span>
                       <CurrencyInput
                         value={item.value}
                         onChange={(val) => onUpdate(item.id, "value", val)}
                         ariaLabel={`Valor de ${item.label}`}
-                        className="w-full bg-transparent border-none focus:ring-0 p-0 text-right text-primary font-bold"
+                        className="w-full bg-transparent border-none focus:ring-0 p-0 text-right text-primary font-semibold"
                       />
                     </div>
                   </td>
@@ -102,19 +99,16 @@ export default function IncomeTable({ items, totalGrossIncome, onAdd, onRemove, 
               ))}
             </tbody>
             <tfoot>
-              <tr className="bg-primary/5 font-bold">
-                <td className="table-cell" colSpan={2}>
-                  TOTAL DOS RENDIMENTOS (sem lucros e dividendos — ver tabela de fontes)
-                </td>
-                <td className="table-cell text-right text-primary text-lg" colSpan={2}>
-                  {formatCurrency(totalGrossIncome)}
-                </td>
+              <tr className="table-total">
+                <td colSpan={2}>Total, sem lucros e dividendos</td>
+                <td className="text-right tabular-nums">{formatCurrency(totalGrossIncome)}</td>
+                <td></td>
               </tr>
             </tfoot>
           </table>
         </div>
         <ShowAllRowsToggle showAll={showAll} hiddenCount={hiddenCount} onToggle={() => setShowAll((v) => !v)} />
       </div>
-    </div>
+    </section>
   );
 }

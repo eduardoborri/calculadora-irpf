@@ -105,7 +105,7 @@ export function generatePdfReport(params: GeneratePdfReportParams) {
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8);
-  doc.text("GSGA-PR · ANÁLISE DE IRPF MÍNIMO", 15, 17);
+  doc.text("GSGA-PR, apuração do IRPF mínimo", 15, 17);
 
   doc.setFontSize(13);
   doc.text("Relatório de Planejamento e Aferição: IRPF Mínimo", 15, 24);

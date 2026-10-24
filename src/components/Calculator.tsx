@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Calculator as CalcIcon, Download, FileText, Settings2, TrendingUp } from "lucide-react";
+import { Download, FileText, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import {
   DEFAULT_INCOME_ITEMS,
@@ -179,13 +179,11 @@ export default function Calculator() {
 
     // 3. Inform user and switch tab
     setSimulationAppliedMessage(
-      `Composição simulada aplicada! Rendimento Tributável (${formatCurrency(simTaxableIncome)}), Aplicações Financeiras (${formatCurrency(
+      `Valores do simulador aplicados à apuração: rendimentos tributáveis de ${formatCurrency(simTaxableIncome)}, aplicações financeiras de ${formatCurrency(
         simFinancialIncome
-      )}), Atividade Rural (${formatCurrency(simRuralIncome)}), Lucros Tributados (${formatCurrency(
-        simTaxedDividends
-      )}) e Lucros Isentos (${formatCurrency(simExemptDividends)}) importados. Total de IRPF ordinário de ${formatCurrency(
-        simResults.standardTaxDue
-      )} registrado como pago.`
+      )}, atividade rural de ${formatCurrency(simRuralIncome)} e dividendos de ${formatCurrency(
+        simTaxedDividends + simExemptDividends
+      )}. O IRPF ordinário de ${formatCurrency(simResults.standardTaxDue)} foi registrado como imposto pago.`
     );
     setStarted(true);
     setActiveTab("detailed");
@@ -342,59 +340,48 @@ export default function Calculator() {
     dividendSources.length === 0 && incomeItems.every((i) => i.value === 0) && taxItems.every((t) => t.value === 0);
   const showWelcome = !started && isEmpty;
 
+  const dataOrigin = importInfo
+    ? `declaração importada (${importInfo.fileName ?? "PDF"}${importInfo.fromOcr ? ", lida por OCR" : ""})`
+    : "valores informados na tela";
+
+  const tabClass = (active: boolean) =>
+    `py-3 px-1 mr-8 text-sm border-b-2 -mb-px transition-colors cursor-pointer ${
+      active ? "border-primary text-primary font-semibold" : "border-transparent text-text-gray hover:text-primary"
+    }`;
+
   return (
-    <div className="max-w-7xl mx-auto p-4 md:p-8 space-y-8">
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-primary/10 pb-6">
+    <div className="max-w-[1240px] mx-auto px-4 md:px-8 py-8 space-y-8">
+      <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
-          <h1 className="text-3xl font-bold text-primary flex items-center gap-2">
-            <CalcIcon className="w-8 h-8" />
-            Calculadora de IRPF Mínimo
-          </h1>
-          <div className="flex items-center gap-2 mt-1">
-            <span className="text-text-gray font-medium">GSGA-PR</span>
-            <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
-            <span className="text-secondary font-bold text-sm">Lei 15.270/2025</span>
-          </div>
+          <h1 className="text-[32px] leading-tight font-semibold text-primary">Calculadora de IRPF mínimo</h1>
+          <p className="text-text-gray mt-1">GSGA-PR, apuração pela Lei nº 15.270/2025</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <button
             onClick={() => setIsImportOpen(true)}
-            className="flex items-center gap-2 text-sm font-semibold bg-white text-primary px-5 py-2 rounded-full border-2 border-primary hover:bg-primary/5 shadow-sm transition-colors cursor-pointer"
+            className="flex items-center gap-2 text-sm font-semibold bg-white text-primary px-4 py-2.5 rounded border-2 border-primary hover:bg-paper transition-colors cursor-pointer"
           >
             <FileText className="w-4 h-4" />
-            <span>Importar Declaração IRPF</span>
+            Importar declaração
           </button>
           <button
             onClick={handleExportPdf}
-            className="flex items-center gap-2 text-sm bg-primary text-white px-5 py-2.5 rounded-full hover:bg-primary/95 shadow-sm active:scale-95 transition-all cursor-pointer"
+            className="flex items-center gap-2 text-sm font-semibold bg-primary text-white px-4 py-2.5 rounded border-2 border-primary hover:bg-primary/90 transition-colors cursor-pointer"
           >
-            <Download className="w-4 h-4 text-white" />
-            <span>Exportar Relatório PDF</span>
+            <Download className="w-4 h-4" />
+            Exportar PDF
           </button>
         </div>
       </header>
 
-      {/* Tabs navigation */}
-      <div className="flex border-b border-gray-200">
-        <button
-          onClick={() => setActiveTab("detailed")}
-          className={`flex items-center gap-2 py-3 px-6 text-sm font-bold border-b-2 transition-all cursor-pointer ${
-            activeTab === "detailed" ? "border-primary text-primary" : "border-transparent text-gray-500 hover:text-primary"
-          }`}
-        >
-          <Settings2 className="w-4 h-4" />
-          Apuração Detalhada (GSGA-PR)
+      <nav className="flex border-b border-rule" aria-label="Seções">
+        <button onClick={() => setActiveTab("detailed")} className={tabClass(activeTab === "detailed")} aria-current={activeTab === "detailed"}>
+          Apuração
         </button>
-        <button
-          onClick={() => setActiveTab("simulator")}
-          className={`flex items-center gap-2 py-3 px-6 text-sm font-bold border-b-2 transition-all cursor-pointer ${
-            activeTab === "simulator" ? "border-primary text-primary" : "border-transparent text-gray-500 hover:text-primary"
-          }`}
-        >
-          <TrendingUp className="w-4 h-4" />
-          Simulador por Faixas de Renda IRPF
+        <button onClick={() => setActiveTab("simulator")} className={tabClass(activeTab === "simulator")} aria-current={activeTab === "simulator"}>
+          Simulador por faixas de renda
         </button>
-      </div>
+      </nav>
 
       {/* Simulation Applied Success Banner */}
       <AnimatePresence>
@@ -403,11 +390,11 @@ export default function Calculator() {
             initial={{ opacity: 0, height: 0, y: -10 }}
             animate={{ opacity: 1, height: "auto", y: 0 }}
             exit={{ opacity: 0, height: 0, y: -10 }}
-            className="bg-secondary/10 border border-secondary/30 p-4 rounded-xl text-primary text-sm font-semibold flex items-center justify-between shadow-sm overflow-hidden"
+            className="bg-white border border-rule border-l-[3px] border-l-secondary px-4 py-2.5 rounded text-ink text-sm flex items-start justify-between gap-4 overflow-hidden"
           >
             <span>{simulationAppliedMessage}</span>
-            <button onClick={() => setSimulationAppliedMessage(null)} className="text-secondary hover:text-primary font-bold text-xs">
-              OK
+            <button onClick={() => setSimulationAppliedMessage(null)} aria-label="Fechar aviso" className="text-text-gray hover:text-ink">
+              <X className="w-4 h-4" />
             </button>
           </motion.div>
         )}
@@ -429,6 +416,7 @@ export default function Calculator() {
           taxItems={taxItems}
           dividendSources={dividendSources}
           results={results}
+          dataOrigin={dataOrigin}
           onAddIncome={addIncomeItem}
           onRemoveIncome={removeIncomeItem}
           onUpdateIncome={updateIncomeItem}
