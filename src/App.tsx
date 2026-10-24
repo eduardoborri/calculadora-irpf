@@ -2,13 +2,15 @@ import Calculator from "./components/Calculator";
 
 export default function App() {
   return (
-    <div className="min-h-screen">
-      <main className="py-8">
+    <div className="min-h-screen flex flex-col">
+      <main className="flex-1">
         <Calculator />
       </main>
-      <footer className="py-8 text-center text-text-gray/60 text-sm border-t border-primary/5">
-        <p>© 2026 GSGA-PR - Calculadora de IRPF Mínimo</p>
-        <p className="mt-1">Desenvolvido conforme a Lei Nº 15.270 de 26 de Novembro de 2025</p>
+      <footer className="border-t border-rule">
+        <p className="max-w-[1240px] mx-auto px-4 md:px-8 py-6 text-xs text-text-gray leading-relaxed">
+          Ferramenta interna da GSGA-PR para apuração do IRPF mínimo da Lei nº 15.270, de 26 de novembro de 2025. Simulação de caráter
+          consultivo; não substitui a declaração nem a análise individual de cada caso.
+        </p>
       </footer>
     </div>
   );

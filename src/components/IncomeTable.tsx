@@ -66,10 +66,10 @@ export default function IncomeTable({ items, totalGrossIncome, onAdd, onRemove, 
                       onClick={() => onUpdate(item.id, "isSubject", !item.isSubject)}
                       aria-pressed={item.isSubject}
                       aria-label={`Sujeito ao IRPF mínimo: ${item.isSubject ? "sim" : "não"}`}
-                      className={`w-full px-3 py-1 text-xs font-semibold rounded border transition-colors ${
+                      className={`w-full px-3 py-1 text-xs rounded border transition-colors cursor-pointer ${
                         item.isSubject
-                          ? "bg-primary text-white border-primary hover:bg-primary/90"
-                          : "bg-white text-text-gray border-rule hover:bg-paper"
+                          ? "bg-secondary/10 text-primary font-semibold border-secondary/30 hover:bg-secondary/20"
+                          : "bg-white text-text-gray font-normal border-rule hover:bg-paper"
                       }`}
                     >
                       {item.isSubject ? "Sim" : "Não"}
