@@ -31,20 +31,32 @@ export function newDividendSource(partial: Partial<DividendSource> = {}): Divide
  * Groups sources by CNPJ (summing repeated entries) and collapses every source
  * below SMALL_SOURCE_THRESHOLD into a single "Demais fontes" row.
  */
-export function consolidateSources(raw: { name: string; cnpj: string; total: number; isSimples?: boolean }[]): DividendSource[] {
-  const byKey = new Map<string, { name: string; cnpj: string; total: number; isSimples: boolean }>();
+export function consolidateSources(
+  raw: { name: string; cnpj: string; total: number; isSimples?: boolean; unidentified?: boolean }[]
+): DividendSource[] {
+  const byKey = new Map<string, { name: string; cnpj: string; total: number; isSimples: boolean; unidentified: boolean }>();
   for (const entry of raw) {
     const key = `${entry.cnpj || entry.name}|${entry.isSimples ? "S" : ""}`;
     const current = byKey.get(key);
     if (current) current.total += entry.total;
-    else byKey.set(key, { name: entry.name, cnpj: entry.cnpj, total: entry.total, isSimples: !!entry.isSimples });
+    else byKey.set(key, { name: entry.name, cnpj: entry.cnpj, total: entry.total, isSimples: !!entry.isSimples, unidentified: !!entry.unidentified });
   }
 
   const sources: DividendSource[] = [];
   let smallTotal = 0;
   let smallCount = 0;
   for (const entry of byKey.values()) {
-    if (entry.total < SMALL_SOURCE_THRESHOLD) {
+    // A reading gap must stay visible as its own row, however small.
+    if (entry.unidentified) {
+      sources.push(
+        newDividendSource({
+          name: entry.name,
+          total: round2(entry.total),
+          isSimples: entry.isSimples,
+          note: "Diferença entre o total do item na DIRPF e as fontes lidas — identifique a fonte na declaração. " + DEFAULT_ALLOCATION_NOTE,
+        })
+      );
+    } else if (entry.total < SMALL_SOURCE_THRESHOLD) {
       smallTotal += entry.total;
       smallCount += 1;
     } else {

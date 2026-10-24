@@ -162,7 +162,7 @@ export function parseDirpf(fullText: string): ParsedDirpf {
   let declaredDividendTotal = 0;
   const exempt = findSection(fullText, EXEMPT_HEADER);
   if (exempt) {
-    const raw: { name: string; cnpj: string; total: number; isSimples?: boolean }[] = [];
+    const raw: { name: string; cnpj: string; total: number; isSimples?: boolean; unidentified?: boolean }[] = [];
     for (const [pattern, isSimples] of [
       [DIVIDENDS_ITEM, false],
       [SIMPLES_ITEM, true],
@@ -171,7 +171,7 @@ export function parseDirpf(fullText: string): ParsedDirpf {
       declaredDividendTotal += item.total;
       raw.push(...item.rows.map((r) => ({ ...r, isSimples })));
       const gap = roundCents(item.total - item.rows.reduce((acc, r) => acc + r.total, 0));
-      if (gap > 0.009) raw.push({ name: "Fonte não identificada na leitura (conferir na DIRPF)", cnpj: "", total: gap, isSimples });
+      if (gap > 0.009) raw.push({ name: "Fonte não identificada na leitura (conferir na DIRPF)", cnpj: "", total: gap, isSimples, unidentified: true });
     }
     sources.push(...consolidateSources(raw));
     add("income", "i8", "Rendimentos isentos e não tributáveis (exceto lucros e dividendos)", exempt.total - declaredDividendTotal);
