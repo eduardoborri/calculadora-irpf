@@ -1,0 +1,5 @@
+{
+  "name": "Calculadora de IRPF Mínimo - GSGA-PR",
+  "description": "Calculadora de tributação mínima de IRPF baseada na Lei 15.270/2025 para altas rendas.",
+  "requestFramePermissions": []
+}
