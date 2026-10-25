@@ -79,7 +79,7 @@ export function consolidateSources(
 
 /**
  * Per-source Art. 16-B redutor and withholding, given the minimum-tax rate:
- *   redutor = posterior × max(0, PJ effective rate + IRPFM rate − PJ nominal rate)
+ *   redutor = posterior × max(0, PJ effective rate + IRPF-M rate − PJ nominal rate)
  * A source without PJ data (or the aggregate row) gets no redutor.
  */
 export function summarizeDividends(sources: DividendSource[], minimumAliquot: number): DividendSummary {

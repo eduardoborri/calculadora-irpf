@@ -99,6 +99,7 @@ export interface ParsedDirpf {
   // Read from the declaration header ("NOME:", "EXERCÍCIO", "ANO-CALENDÁRIO").
   taxpayerName?: string;
   fiscalYearLabel?: string;
+  calendarYear?: number;
 }
 
 export interface TaxBracket {

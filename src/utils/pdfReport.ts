@@ -42,6 +42,10 @@ export interface GeneratePdfReportParams {
   simResults: SimResultsForReport;
   // Identification shown in the eyebrow label, e.g. "David Soifer · DIRPF 2026 (AC 2025)".
   taxpayerLabel?: string;
+  // Used in the file name: apuracao_irpf_minimo_<nome>.pdf
+  taxpayerName?: string;
+  // Calendar year of the declaration; before 2026 the result is a projection.
+  calendarYear?: number;
 }
 
 type RGB = [number, number, number];
@@ -206,7 +210,7 @@ class Report {
       ty += titleHeight;
     }
     this.font("normal", 9.5, C.body);
-    d.text(lines, 76.7, ty, { lineHeightFactor: 14 / 9.5 });
+    d.text(lines, 76.7, ty, { lineHeightFactor: 14 / 9.5, align: "justify", maxWidth: textWidth });
     this.y += height + 16;
   }
 
@@ -280,11 +284,12 @@ class Report {
     this.y += lines.length * 10 + 14;
   }
 
-  paragraph(text: string, width = 600) {
+  // Justified running text (last line left-aligned).
+  paragraph(text: string, width = WIDTH) {
     this.font("normal", 9.5, C.body);
     const lines = this.doc.splitTextToSize(text, width);
     this.ensure(lines.length * 14.5 + 6);
-    this.doc.text(lines, LEFT, this.y + 10, { lineHeightFactor: 14.5 / 9.5 });
+    this.doc.text(lines, LEFT, this.y + 10, { lineHeightFactor: 14.5 / 9.5, align: "justify", maxWidth: width });
     this.y += lines.length * 14.5 + 8;
   }
 
@@ -321,12 +326,12 @@ const dash = (v: number) => (Math.abs(v) < 0.005 ? "—" : brl(v));
 const TECHNICAL_MESSAGE = [
   "O IRPF Mínimo, instituído pela Lei nº 15.270/2025, estabelece uma tributação mínima para pessoas físicas de alta renda, com alíquotas efetivas de até 10%, conforme o nível de rendimentos anuais.",
   "Diferentemente da sistemática tradicional, que prevê a isenção de lucros e dividendos distribuídos à pessoa física, o novo regime considera determinados rendimentos na apuração de uma base de cálculo ampliada, observadas as exclusões e deduções expressamente previstas em lei.",
-  "O mecanismo busca verificar se a tributação suportada pelo contribuinte ao longo do ano atingiu o patamar mínimo exigido. Caso contrário, poderá haver a incidência de Imposto de Renda da Pessoa Física Mínimo (IRPFM), calculado conforme as regras legais aplicáveis.",
+  "O mecanismo busca verificar se a tributação suportada pelo contribuinte ao longo do ano atingiu o patamar mínimo exigido. Caso contrário, poderá haver a incidência de Imposto de Renda da Pessoa Física Mínimo (IRPF-M), calculado conforme as regras legais aplicáveis.",
 ];
 
 const DEDUCTIONS_DYNAMIC =
-  "Na declaração de ajuste anual, deduções como despesas médicas, despesas com instrução, dependentes ou o desconto simplificado reduzem a base de cálculo e, por consequência, o imposto devido. O IRPFM, por sua vez, é apurado sobre uma base ampliada de rendimentos, sem essas deduções, e o imposto apurado na declaração de ajuste é considerado na redução do valor devido a título de IRPFM. " +
-  "Por isso, quando a tributação do contribuinte fica abaixo do patamar mínimo e há IRPFM a recolher, a economia obtida com deduções na declaração de ajuste é compensada por um aumento equivalente do IRPFM, e o benefício financeiro dessas deduções deixa de existir. Quando a tributação já supera o patamar mínimo, as deduções mantêm integralmente o seu efeito.";
+  "Na declaração de ajuste anual, deduções como despesas médicas, despesas com instrução, dependentes ou o desconto simplificado reduzem a base de cálculo e, por consequência, o imposto devido. O IRPF-M, por sua vez, é apurado sobre uma base ampliada de rendimentos, sem essas deduções, e o imposto apurado na declaração de ajuste é considerado na redução do valor devido a título de IRPF-M. " +
+  "Por isso, quando a tributação do contribuinte fica abaixo do patamar mínimo e há IRPF-M a recolher, a economia obtida com deduções na declaração de ajuste é compensada por um aumento equivalente do IRPF-M, e o benefício financeiro dessas deduções deixa de existir. Quando a tributação já supera o patamar mínimo, as deduções mantêm integralmente o seu efeito.";
 
 const METHOD_NOTES = [
   "Base de cálculo: rendimentos tributáveis, rendimentos sujeitos à tributação exclusiva ou definitiva e lucros e dividendos posteriores a 2025. Rendimentos isentos como poupança, LCI, LCA, CRI, CRA, fundos imobiliários, doações e heranças ficam fora da base.",
@@ -350,25 +355,50 @@ export async function generatePdfReport(params: GeneratePdfReportParams): Promis
   const issued = new Date().toLocaleDateString("pt-BR");
   const eyebrow = params.taxpayerLabel?.trim() || "IRPF Mínimo · Lei nº 15.270/2025";
 
+  // 1. Technical message
+  r.page({ eyebrow, title: "Mensagem técnica", subtitle: "Regime do IRPF mínimo e efeitos sobre a apuração" }, true);
+  TECHNICAL_MESSAGE.forEach((p) => r.paragraph(p));
+  r.y += 6;
+  r.callout(DEDUCTIONS_DYNAMIC, "alert", "Dinâmica fiscal relevante: o efeito das deduções");
+
+  // 2. Methodological notes, before the calculations
+  r.page({ eyebrow, title: "Notas metodológicas", subtitle: "Premissas adotadas na apuração" });
+  const year = params.calendarYear;
+  if (year && year < IRPFM_FIRST_CALENDAR_YEAR) {
+    r.callout(
+      `A declaração analisada refere-se ao ano-calendário ${year}, anterior à vigência do IRPF-M, que se aplica a partir do ano-calendário ${IRPFM_FIRST_CALENDAR_YEAR}. Por isso, a apuração tem caráter projetivo: aplica as regras da Lei nº 15.270/2025 aos rendimentos e ao imposto declarados, como estimativa do que ocorreria se a mesma situação se repetisse em ${IRPFM_FIRST_CALENDAR_YEAR}. Não há IRPF-M devido em relação ao ano-calendário ${year}.`,
+      "neutral",
+      "Caráter projetivo da apuração"
+    );
+  }
+  METHOD_NOTES.forEach((n) => r.paragraph(`• ${n}`));
+  r.footnote("Simulação de caráter consultivo, elaborada com base nos dados informados e nas regras da Lei nº 15.270/2025. Não substitui a declaração nem a análise individual de cada caso.");
+
+  // 3. Calculations
   if (params.activeTab === "detailed") detailedPages(r, params, eyebrow, issued);
   else simulatorPages(r, params, eyebrow, issued);
 
-  // Technical message (both modes)
-  r.page({ eyebrow, title: "Mensagem técnica", subtitle: "Regime do IRPF mínimo e efeitos sobre a apuração" });
-  TECHNICAL_MESSAGE.forEach((p) => r.paragraph(p, WIDTH));
-  r.y += 6;
-  r.callout(DEDUCTIONS_DYNAMIC, "alert", "Dinâmica fiscal relevante: o efeito das deduções");
-  r.subheading("Notas metodológicas");
-  METHOD_NOTES.forEach((n) => r.paragraph(`• ${n}`, WIDTH));
-  r.footnote("Simulação de caráter consultivo, elaborada com base nos dados informados e nas regras da Lei nº 15.270/2025. Não substitui a declaração nem a análise individual de cada caso.");
-
   r.footers();
-  const name = params.activeTab === "detailed" ? "apuracao_irpf_minimo" : "simulacao_irpf_minimo";
+  const prefix = params.activeTab === "detailed" ? "apuracao_irpf_minimo" : "simulacao_irpf_minimo";
+  const who = slug(params.taxpayerName ?? "");
   return {
     blob: doc.output("blob"),
-    fileName: `${name}_${new Date().toISOString().split("T")[0]}.pdf`,
+    fileName: `${prefix}_${who || new Date().toISOString().split("T")[0]}.pdf`,
     usedFallbackFont: assets.font !== "Inter",
   };
+}
+
+// The IRPF-M applies from calendar year 2026 on (Lei nº 15.270/2025).
+const IRPFM_FIRST_CALENDAR_YEAR = 2026;
+
+// "Marina Coelho Leme" → "marina_coelho_leme" (safe file name).
+function slug(text: string): string {
+  return text
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
 }
 
 function detailedPages(r: Report, p: GeneratePdfReportParams, eyebrow: string, issued: string) {
@@ -376,10 +406,10 @@ function detailedPages(r: Report, p: GeneratePdfReportParams, eyebrow: string, i
   const div = res.dividends;
 
   // 1. Result
-  r.page({ eyebrow, title: "Apuração do IRPF mínimo", subtitle: `Memória de cálculo – emitido em ${issued}` }, true);
+  r.page({ eyebrow, title: "Apuração do IRPF mínimo", subtitle: `Memória de cálculo – emitido em ${issued}` });
   if (res.additionalTax > 0) {
     r.callout(
-      `A tributação suportada no ano não alcança o patamar mínimo exigido. Há IRPFM a recolher de ${brl(res.additionalTax)}, conforme demonstrado na tabela abaixo.`,
+      `A tributação suportada no ano não alcança o patamar mínimo exigido. Há IRPF-M a recolher de ${brl(res.additionalTax)}, conforme demonstrado na tabela abaixo.`,
       "alert"
     );
   } else if (res.refund > 0) {
@@ -388,7 +418,7 @@ function detailedPages(r: Report, p: GeneratePdfReportParams, eyebrow: string, i
       "neutral"
     );
   } else {
-    r.callout("A tributação suportada no ano alcança o patamar mínimo exigido. Não há IRPFM a recolher, conforme demonstrado na tabela abaixo.", "neutral");
+    r.callout("A tributação suportada no ano alcança o patamar mínimo exigido. Não há IRPF-M a recolher, conforme demonstrado na tabela abaixo.", "neutral");
   }
   const rows: Row[] = [
     { cells: ["Base de cálculo sujeita ao IRPF mínimo", brl(res.subjectBase)] },
@@ -398,7 +428,7 @@ function detailedPages(r: Report, p: GeneratePdfReportParams, eyebrow: string, i
     { cells: ["(−) Redutor do art. 16-B", dash(res.reduction16B)] },
   ];
   if (res.refund > 0) rows.push({ cells: ["Restituição da retenção sobre dividendos", brl(res.refund)], kind: "highlight" });
-  rows.push({ cells: ["IRPFM a recolher", brl(res.additionalTax)], kind: "total" });
+  rows.push({ cells: ["IRPF-M a recolher", brl(res.additionalTax)], kind: "total" });
   r.table([{ label: "Descrição", width: WIDTH - 180 }, { label: "Valor", width: 180 }], rows);
   const notes = ["Valores em R$."];
   if (res.presumedExclusiveTax > 0) notes.push(`O imposto pago inclui ${brl(res.presumedExclusiveTax)} presumidos à alíquota de 15% sobre a tributação exclusiva sem imposto informado.`);
@@ -463,11 +493,11 @@ function detailedPages(r: Report, p: GeneratePdfReportParams, eyebrow: string, i
 function simulatorPages(r: Report, p: GeneratePdfReportParams, eyebrow: string, issued: string) {
   const s = p.simResults;
   const period = p.simPeriod === "annual" ? "anual" : "mensal";
-  r.page({ eyebrow, title: "Simulação do IRPF mínimo", subtitle: `Simulação ${period} por faixas de renda – emitido em ${issued}` }, true);
+  r.page({ eyebrow, title: "Simulação do IRPF mínimo", subtitle: `Simulação ${period} por faixas de renda – emitido em ${issued}` });
   if (s.additionalMinTax > 0) {
-    r.callout(`Na composição simulada, a tributação não alcança o patamar mínimo. Haveria IRPFM a recolher de ${brl(s.additionalMinTax)}.`, "alert");
+    r.callout(`Na composição simulada, a tributação não alcança o patamar mínimo. Haveria IRPF-M a recolher de ${brl(s.additionalMinTax)}.`, "alert");
   } else {
-    r.callout("Na composição simulada, a tributação alcança o patamar mínimo exigido. Não haveria IRPFM a recolher.", "neutral");
+    r.callout("Na composição simulada, a tributação alcança o patamar mínimo exigido. Não haveria IRPF-M a recolher.", "neutral");
   }
   r.table(
     [{ label: "Descrição", width: WIDTH - 180 }, { label: "Valor", width: 180 }],
@@ -481,7 +511,7 @@ function simulatorPages(r: Report, p: GeneratePdfReportParams, eyebrow: string, 
       { cells: ["Base de cálculo do IRPF mínimo", brl(s.minimumBase)] },
       { cells: ["Alíquota efetiva do IRPF mínimo", formatPercent(s.minimumRate)] },
       { cells: ["IRPF mínimo devido", brl(s.minimumTaxDue)], kind: "highlight" },
-      { cells: ["IRPFM a recolher", brl(s.additionalMinTax)], kind: "total" },
+      { cells: ["IRPF-M a recolher", brl(s.additionalMinTax)], kind: "total" },
     ]
   );
   const deduction =

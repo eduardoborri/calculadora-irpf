@@ -28,6 +28,8 @@ export default function Calculator() {
   const [importInfo, setImportInfo] = useState<ImportInfo | null>(null);
   // Shown in the PDF report label; filled from the declaration, editable.
   const [taxpayerLabel, setTaxpayerLabel] = useState("");
+  // Calendar year of the imported declaration; before 2026 the report is a projection.
+  const [calendarYear, setCalendarYear] = useState<number | undefined>();
   const [pdfStatus, setPdfStatus] = useState<
     | { state: "idle" }
     | { state: "generating" }
@@ -244,8 +246,9 @@ export default function Calculator() {
   const updateDividendSource = (id: string, field: keyof DividendSource, value: any) =>
     setDividendSources((prev) => prev.map((s) => (s.id === id ? { ...s, [field]: value } : s)));
 
-  const handleApplyImport = ({ fields, sources, checks, fromOcr, fileName, taxpayerName, fiscalYearLabel }: ParsedDirpf) => {
+  const handleApplyImport = ({ fields, sources, checks, fromOcr, fileName, taxpayerName, fiscalYearLabel, calendarYear }: ParsedDirpf) => {
     setDividendSources(sources);
+    setCalendarYear(calendarYear);
     if (taxpayerName) setTaxpayerLabel([taxpayerName, fiscalYearLabel].filter(Boolean).join(" · "));
     setImportInfo({ fileName, fromOcr, checks, importedAt: new Date() });
     setStarted(true);
@@ -355,6 +358,9 @@ export default function Calculator() {
       simDependents,
       simResults,
       taxpayerLabel,
+      // The name part of "Nome · DIRPF 2026 (AC 2025)" goes into the file name.
+      taxpayerName: taxpayerLabel.split(" · ")[0].trim(),
+      calendarYear,
     })
       .then(({ blob, fileName, usedFallbackFont }) => {
         const url = URL.createObjectURL(blob);

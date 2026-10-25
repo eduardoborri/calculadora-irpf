@@ -209,6 +209,7 @@ export function parseDirpf(fullText: string): ParsedDirpf {
     checks,
     taxpayerName: extractTaxpayerName(fullText),
     fiscalYearLabel: extractFiscalYearLabel(fullText),
+    calendarYear: Number(/ANO-CALEND[AÁ]RIO\s+(\d{4})/.exec(fullText)?.[1]) || undefined,
   };
 }
 
