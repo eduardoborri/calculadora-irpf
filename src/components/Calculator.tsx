@@ -26,6 +26,8 @@ export default function Calculator() {
   const [taxItems, setTaxItems] = useState<TaxPaymentItem[]>(DEFAULT_TAX_ITEMS);
   const [dividendSources, setDividendSources] = useState<DividendSource[]>([]);
   const [importInfo, setImportInfo] = useState<ImportInfo | null>(null);
+  // Shown in the PDF report label; filled from the declaration, editable.
+  const [taxpayerLabel, setTaxpayerLabel] = useState("");
   // Welcome screen is shown until the user picks a way to start (or data exists).
   const [started, setStarted] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
@@ -236,8 +238,9 @@ export default function Calculator() {
   const updateDividendSource = (id: string, field: keyof DividendSource, value: any) =>
     setDividendSources((prev) => prev.map((s) => (s.id === id ? { ...s, [field]: value } : s)));
 
-  const handleApplyImport = ({ fields, sources, checks, fromOcr, fileName }: ParsedDirpf) => {
+  const handleApplyImport = ({ fields, sources, checks, fromOcr, fileName, taxpayerName, fiscalYearLabel }: ParsedDirpf) => {
     setDividendSources(sources);
+    if (taxpayerName) setTaxpayerLabel([taxpayerName, fiscalYearLabel].filter(Boolean).join(" · "));
     setImportInfo({ fileName, fromOcr, checks, importedAt: new Date() });
     setStarted(true);
     setIncomeItems((prev) =>
@@ -333,6 +336,7 @@ export default function Calculator() {
       simDeductionMode,
       simDependents,
       simResults,
+      taxpayerLabel,
     }).catch((err) => {
       console.error(err);
       alert("Não foi possível gerar o relatório em PDF. Tente novamente.");
@@ -404,6 +408,19 @@ export default function Calculator() {
       </AnimatePresence>
 
       {importInfo && <ImportStatusBadge info={importInfo} onDismiss={() => setImportInfo(null)} />}
+
+      {!(activeTab === "detailed" && showWelcome) && (
+        <label className="flex flex-col sm:flex-row sm:items-center gap-2 text-sm">
+          <span className="text-text-gray shrink-0">Contribuinte no relatório</span>
+          <input
+            type="text"
+            value={taxpayerLabel}
+            onChange={(e) => setTaxpayerLabel(e.target.value)}
+            placeholder="Ex.: Maria Silva · DIRPF 2026 (AC 2025)"
+            className="flex-1 max-w-xl px-3 py-2 bg-white border border-rule rounded text-ink"
+          />
+        </label>
+      )}
 
       {activeTab === "detailed" && showWelcome && (
         <WelcomeScreen

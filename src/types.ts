@@ -96,6 +96,9 @@ export interface ParsedDirpf {
   // True when the text came from OCR (PDF without a text layer).
   fromOcr?: boolean;
   fileName?: string;
+  // Read from the declaration header ("NOME:", "EXERCÍCIO", "ANO-CALENDÁRIO").
+  taxpayerName?: string;
+  fiscalYearLabel?: string;
 }
 
 export interface TaxBracket {

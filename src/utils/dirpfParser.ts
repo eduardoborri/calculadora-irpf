@@ -202,7 +202,36 @@ export function parseDirpf(fullText: string): ParsedDirpf {
     }
   }
 
-  return { fields: results, sources, declaredDividendTotal: roundCents(declaredDividendTotal), checks };
+  return {
+    fields: results,
+    sources,
+    declaredDividendTotal: roundCents(declaredDividendTotal),
+    checks,
+    taxpayerName: extractTaxpayerName(fullText),
+    fiscalYearLabel: extractFiscalYearLabel(fullText),
+  };
+}
+
+const LOWERCASE_PARTICLES = new Set(["de", "da", "do", "das", "dos", "e"]);
+
+// "NOME:   DAVID SOIFER" in the page header → "David Soifer".
+function extractTaxpayerName(text: string): string | undefined {
+  const m = /^\s*NOME:\s+(.+?)(?:\s{3,}|$)/m.exec(text);
+  const raw = m?.[1]?.trim();
+  if (!raw || /\d/.test(raw)) return undefined;
+  return raw
+    .toLowerCase()
+    .split(/\s+/)
+    .map((w, i) => (i > 0 && LOWERCASE_PARTICLES.has(w) ? w : w.charAt(0).toUpperCase() + w.slice(1)))
+    .join(" ");
+}
+
+// "EXERCÍCIO 2026 ... ANO-CALENDÁRIO 2025" → "DIRPF 2026 (AC 2025)".
+function extractFiscalYearLabel(text: string): string | undefined {
+  const exercise = /EXERC[IÍ]CIO\s+(\d{4})/.exec(text)?.[1];
+  const calendar = /ANO-CALEND[AÁ]RIO\s+(\d{4})/.exec(text)?.[1];
+  if (!exercise) return undefined;
+  return calendar ? `DIRPF ${exercise} (AC ${calendar})` : `DIRPF ${exercise}`;
 }
 
 // Sum of the numbered items of a ficha ("09. Lucros e dividendos ... 609.356,42").

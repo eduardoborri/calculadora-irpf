@@ -40,6 +40,8 @@ export interface GeneratePdfReportParams {
   simDeductionMode: "simplified" | "complete";
   simDependents: number;
   simResults: SimResultsForReport;
+  // Identification shown in the eyebrow label, e.g. "David Soifer · DIRPF 2026 (AC 2025)".
+  taxpayerLabel?: string;
 }
 
 type RGB = [number, number, number];
@@ -338,7 +340,7 @@ export async function generatePdfReport(params: GeneratePdfReportParams) {
   const assets = await loadAssets(doc);
   const r = new Report(doc, assets);
   const issued = new Date().toLocaleDateString("pt-BR");
-  const eyebrow = "IRPF Mínimo · Lei nº 15.270/2025";
+  const eyebrow = params.taxpayerLabel?.trim() || "IRPF Mínimo · Lei nº 15.270/2025";
 
   if (params.activeTab === "detailed") detailedPages(r, params, eyebrow, issued);
   else simulatorPages(r, params, eyebrow, issued);
