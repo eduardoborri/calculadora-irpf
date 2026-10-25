@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Download, FileText, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import {
@@ -14,7 +14,7 @@ import {
 import { CalculationResult, DividendSource, IncomeItem, ParsedDirpf, SimulationResult, TaxPaymentItem } from "../types";
 import { newDividendSource, summarizeDividends } from "../utils/dividends";
 import { formatCurrency } from "../utils/format";
-import { generatePdfReport } from "../utils/pdfReport";
+import { buildPdfReport, GeneratePdfReportParams, preloadReportFiles, ReportFiles } from "../utils/pdfReport";
 import DetailedView from "./DetailedView";
 import ImportDeclarationDialog from "./ImportDeclarationDialog";
 import ImportStatusBadge, { ImportInfo } from "./ImportStatusBadge";
@@ -338,11 +338,18 @@ export default function Calculator() {
     a.remove();
   };
 
+  // Fonts and logo are fetched ahead of time, so the click builds the PDF and
+  // starts the download in the same event. A download started seconds later,
+  // after an await, may be dropped by the browser as not user-initiated.
+  const reportFiles = useRef<ReportFiles | null>(null);
+  useEffect(() => {
+    preloadReportFiles().then((files) => (reportFiles.current = files));
+  }, []);
+
   const handleExportPdf = () => {
     if (pdfStatus.state === "generating") return;
     if (pdfStatus.state === "done") URL.revokeObjectURL(pdfStatus.url);
-    setPdfStatus({ state: "generating" });
-    generatePdfReport({
+    const params: GeneratePdfReportParams = {
       activeTab,
       incomeItems,
       taxItems,
@@ -361,16 +368,32 @@ export default function Calculator() {
       // The name part of "Nome · DIRPF 2026 (AC 2025)" goes into the file name.
       taxpayerName: taxpayerLabel.split(" · ")[0].trim(),
       calendarYear,
-    })
-      .then(({ blob, fileName, usedFallbackFont }) => {
-        const url = URL.createObjectURL(blob);
-        setPdfStatus({ state: "done", url, fileName, usedFallbackFont });
-        triggerDownload(url, fileName);
-      })
-      .catch((err) => {
-        console.error(err);
-        setPdfStatus({ state: "error", message: err instanceof Error ? err.message : String(err) });
-      });
+    };
+    const finish = (files: ReportFiles) => {
+      reportFiles.current = files;
+      const { blob, fileName, usedFallbackFont } = buildPdfReport(params, files);
+      const url = URL.createObjectURL(blob);
+      setPdfStatus({ state: "done", url, fileName, usedFallbackFont });
+      triggerDownload(url, fileName);
+    };
+    const fail = (err: unknown) => {
+      console.error(err);
+      setPdfStatus({ state: "error", message: err instanceof Error ? err.message : String(err) });
+    };
+
+    const files = reportFiles.current;
+    if (files?.fonts && files.logo) {
+      try {
+        finish(files);
+      } catch (err) {
+        fail(err);
+      }
+      return;
+    }
+    setPdfStatus({ state: "generating" });
+    preloadReportFiles()
+      .then(finish)
+      .catch(fail);
   };
 
   const isEmpty =

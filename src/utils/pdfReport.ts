@@ -88,29 +88,49 @@ interface Assets {
   logo: string | null;
 }
 
+// Files fetched once per session (base64). Generating the PDF itself is
+// synchronous, so once these are loaded the download can start inside the
+// click handler, where the browser still counts it as a user action.
+export interface ReportFiles {
+  fonts: { regular: string; semibold: string; bold: string } | null;
+  logo: string | null;
+}
+
+let filesPromise: Promise<ReportFiles> | null = null;
+
 // Inter (SIL OFL) embedded in the PDF; Aptos can't be embedded under its
 // license. Falls back to Helvetica if the files can't be loaded.
-async function loadAssets(doc: jsPDF): Promise<Assets> {
-  let font = "helvetica";
-  try {
-    const [regular, semibold, bold] = await Promise.all(["fonts/Inter-400.ttf", "fonts/Inter-600.ttf", "fonts/Inter-700.ttf"].map(fetchBase64));
-    doc.addFileToVFS("Inter-400.ttf", regular);
-    doc.addFont("Inter-400.ttf", "Inter", "normal");
-    doc.addFileToVFS("Inter-600.ttf", semibold);
-    doc.addFont("Inter-600.ttf", "Inter", "semibold");
-    doc.addFileToVFS("Inter-700.ttf", bold);
-    doc.addFont("Inter-700.ttf", "Inter", "bold");
-    font = "Inter";
-  } catch (err) {
-    console.warn("Fonte Inter indisponível, usando Helvetica.", err);
-  }
-  let logo: string | null = null;
-  try {
-    logo = `data:image/png;base64,${await fetchBase64("brand/gsga-logo.png")}`;
-  } catch (err) {
-    console.warn("Logotipo indisponível.", err);
-  }
-  return { font, logo };
+export function preloadReportFiles(): Promise<ReportFiles> {
+  filesPromise ??= (async () => {
+    let fonts: ReportFiles["fonts"] = null;
+    try {
+      const [regular, semibold, bold] = await Promise.all(["fonts/Inter-400.ttf", "fonts/Inter-600.ttf", "fonts/Inter-700.ttf"].map(fetchBase64));
+      fonts = { regular, semibold, bold };
+    } catch (err) {
+      console.warn("Fonte Inter indisponível, usando Helvetica.", err);
+    }
+    let logo: string | null = null;
+    try {
+      logo = `data:image/png;base64,${await fetchBase64("brand/gsga-logo.png")}`;
+    } catch (err) {
+      console.warn("Logotipo indisponível.", err);
+    }
+    // A failed load is retried on the next export instead of being cached.
+    if (!fonts || !logo) filesPromise = null;
+    return { fonts, logo };
+  })();
+  return filesPromise;
+}
+
+function applyFiles(doc: jsPDF, files: ReportFiles): Assets {
+  if (!files.fonts) return { font: "helvetica", logo: files.logo };
+  doc.addFileToVFS("Inter-400.ttf", files.fonts.regular);
+  doc.addFont("Inter-400.ttf", "Inter", "normal");
+  doc.addFileToVFS("Inter-600.ttf", files.fonts.semibold);
+  doc.addFont("Inter-600.ttf", "Inter", "semibold");
+  doc.addFileToVFS("Inter-700.ttf", files.fonts.bold);
+  doc.addFont("Inter-700.ttf", "Inter", "bold");
+  return { font: "Inter", logo: files.logo };
 }
 
 // ------------------------------------------------------------------ layout engine
@@ -349,8 +369,12 @@ export interface GeneratedReport {
 // Builds the report and returns it; the caller decides how to deliver it
 // (download, open in a new tab), so failures can be shown to the user.
 export async function generatePdfReport(params: GeneratePdfReportParams): Promise<GeneratedReport> {
+  return buildPdfReport(params, await preloadReportFiles());
+}
+
+export function buildPdfReport(params: GeneratePdfReportParams, files: ReportFiles): GeneratedReport {
   const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
-  const assets = await loadAssets(doc);
+  const assets = applyFiles(doc, files);
   const r = new Report(doc, assets);
   const issued = new Date().toLocaleDateString("pt-BR");
   const eyebrow = params.taxpayerLabel?.trim() || "IRPF Mínimo · Lei nº 15.270/2025";
