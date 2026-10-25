@@ -1,4 +1,4 @@
-# Calculadora de IRPF Mínimo — GSGA-PR
+# Calculadora IRPF-M — GSGA-PR
 
 Calculadora de tributação mínima de IRPF baseada na Lei nº 15.270/2025 para altas rendas. Aplicativo 100% front-end (React + Vite + TypeScript + Tailwind), sem backend e sem dependência de nenhuma API externa. Acompanha um gerador de planilha Excel (`tools/planilha_irpfm.py`) com as mesmas regras.
 
