@@ -335,7 +335,15 @@ const METHOD_NOTES = [
   "Redutor do art. 16-B, por fonte pagadora: parcela posterior a 2025 × (alíquota efetiva de IRPJ e CSLL da empresa + alíquota do IRPF mínimo − alíquota nominal do setor), limitado ao saldo devido.",
 ];
 
-export async function generatePdfReport(params: GeneratePdfReportParams) {
+export interface GeneratedReport {
+  blob: Blob;
+  fileName: string;
+  usedFallbackFont: boolean;
+}
+
+// Builds the report and returns it; the caller decides how to deliver it
+// (download, open in a new tab), so failures can be shown to the user.
+export async function generatePdfReport(params: GeneratePdfReportParams): Promise<GeneratedReport> {
   const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
   const assets = await loadAssets(doc);
   const r = new Report(doc, assets);
@@ -356,7 +364,11 @@ export async function generatePdfReport(params: GeneratePdfReportParams) {
 
   r.footers();
   const name = params.activeTab === "detailed" ? "apuracao_irpf_minimo" : "simulacao_irpf_minimo";
-  doc.save(`${name}_${new Date().toISOString().split("T")[0]}.pdf`);
+  return {
+    blob: doc.output("blob"),
+    fileName: `${name}_${new Date().toISOString().split("T")[0]}.pdf`,
+    usedFallbackFont: assets.font !== "Inter",
+  };
 }
 
 function detailedPages(r: Report, p: GeneratePdfReportParams, eyebrow: string, issued: string) {

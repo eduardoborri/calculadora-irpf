@@ -28,6 +28,12 @@ export default function Calculator() {
   const [importInfo, setImportInfo] = useState<ImportInfo | null>(null);
   // Shown in the PDF report label; filled from the declaration, editable.
   const [taxpayerLabel, setTaxpayerLabel] = useState("");
+  const [pdfStatus, setPdfStatus] = useState<
+    | { state: "idle" }
+    | { state: "generating" }
+    | { state: "done"; url: string; fileName: string; usedFallbackFont: boolean }
+    | { state: "error"; message: string }
+  >({ state: "idle" });
   // Welcome screen is shown until the user picks a way to start (or data exists).
   const [started, setStarted] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
@@ -320,7 +326,19 @@ export default function Calculator() {
     };
   }, [incomeItems, taxItems, dividendSources]);
 
+  const triggerDownload = (url: string, fileName: string) => {
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  };
+
   const handleExportPdf = () => {
+    if (pdfStatus.state === "generating") return;
+    if (pdfStatus.state === "done") URL.revokeObjectURL(pdfStatus.url);
+    setPdfStatus({ state: "generating" });
     generatePdfReport({
       activeTab,
       incomeItems,
@@ -337,10 +355,16 @@ export default function Calculator() {
       simDependents,
       simResults,
       taxpayerLabel,
-    }).catch((err) => {
-      console.error(err);
-      alert("Não foi possível gerar o relatório em PDF. Tente novamente.");
-    });
+    })
+      .then(({ blob, fileName, usedFallbackFont }) => {
+        const url = URL.createObjectURL(blob);
+        setPdfStatus({ state: "done", url, fileName, usedFallbackFont });
+        triggerDownload(url, fileName);
+      })
+      .catch((err) => {
+        console.error(err);
+        setPdfStatus({ state: "error", message: err instanceof Error ? err.message : String(err) });
+      });
   };
 
   const isEmpty =
@@ -406,6 +430,40 @@ export default function Calculator() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {pdfStatus.state !== "idle" && (
+        <div
+          role="status"
+          className={`bg-white border border-rule border-l-[3px] rounded px-4 py-2.5 text-sm flex items-start gap-3 ${
+            pdfStatus.state === "error" ? "border-l-accent" : "border-l-secondary"
+          }`}
+        >
+          <p className={`flex-1 ${pdfStatus.state === "error" ? "text-accent" : "text-ink"}`}>
+            {pdfStatus.state === "generating" && "Gerando o relatório em PDF…"}
+            {pdfStatus.state === "done" && (
+              <>
+                Relatório gerado: {pdfStatus.fileName}.{" "}
+                {pdfStatus.usedFallbackFont && "A fonte Inter não carregou; o PDF saiu em Helvetica. "}
+                Se o download não começou,{" "}
+                <a href={pdfStatus.url} download={pdfStatus.fileName} className="text-action px-0 underline">
+                  baixe novamente
+                </a>{" "}
+                ou{" "}
+                <a href={pdfStatus.url} target="_blank" rel="noreferrer" className="text-action px-0 underline">
+                  abra em nova aba
+                </a>
+                .
+              </>
+            )}
+            {pdfStatus.state === "error" && `Não foi possível gerar o relatório: ${pdfStatus.message}`}
+          </p>
+          {pdfStatus.state !== "generating" && (
+            <button onClick={() => setPdfStatus({ state: "idle" })} aria-label="Fechar aviso" className="text-text-gray hover:text-ink">
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      )}
 
       {importInfo && <ImportStatusBadge info={importInfo} onDismiss={() => setImportInfo(null)} />}
 
