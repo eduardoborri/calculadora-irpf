@@ -132,7 +132,7 @@ export default function CalculationMemo({ results, incomeItems, taxItems, divide
           =
         </span>
         <div>
-          <p className="text-sm text-white/85">{refund > 0 ? "Restituição" : "Adicional a pagar"}</p>
+          <p className="text-sm text-white/85">{refund > 0 ? "Restituição" : "IRPF-M apurado"}</p>
           {additionalTax > 0 ? (
             <p className="mt-1 inline-block bg-accent text-white text-[32px] leading-none font-semibold px-2 py-1.5 rounded tabular-nums">
               {formatCurrency(additionalTax)}

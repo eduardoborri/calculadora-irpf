@@ -324,13 +324,13 @@ export default function Simulator({
                 <div className="flex justify-between items-baseline">
                   <span className="text-xs font-semibold opacity-85 text-white">Análise de Diferencial Obrigatório</span>
                   <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-white/20 text-white">
-                    {simResults.additionalMinTax > 0 ? "Adicional Devido" : "Cumprimento Concluído"}
+                    {simResults.additionalMinTax > 0 ? "IRPF-M apurado" : "Cumprimento Concluído"}
                   </span>
                 </div>
 
                 {simResults.additionalMinTax > 0 ? (
                   <div className="space-y-1">
-                    <p className="text-2xl font-semibold text-white">Adicional de {formatCurrency(simResults.additionalMinTax)}</p>
+                    <p className="text-2xl font-semibold text-white">IRPF-M de {formatCurrency(simResults.additionalMinTax)}</p>
                     <p className="text-xs leading-relaxed opacity-90 text-white font-medium">
                       O imposto devido pelas regras ordinárias e deduções do IRPF ({formatCurrency(simResults.standardTaxDue)}) não é suficiente para
                       atingir o piso mínimo exigido ({formatCurrency(simResults.minimumTaxDue)}). É gerado um adendo obrigatório para regularização da
@@ -339,7 +339,7 @@ export default function Simulator({
                   </div>
                 ) : (
                   <div className="space-y-1">
-                    <p className="text-xl font-semibold text-white">Isento de Adicional Tributário!</p>
+                    <p className="text-xl font-semibold text-white">Sem IRPF-M apurado</p>
                     <p className="text-xs leading-relaxed opacity-90 text-white font-medium">
                       Sua contribuição ordinária no IRPF progressivo ({formatCurrency(simResults.standardTaxDue)}) já atende ou supera plenamente a cota
                       mínima legal de {formatPercent(simResults.minimumRate)} decretada ({formatCurrency(simResults.minimumTaxDue)}). Nenhum imposto extra

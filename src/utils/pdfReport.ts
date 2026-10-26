@@ -344,20 +344,20 @@ const brl = (v: number) => formatCurrency(v);
 const dash = (v: number) => (Math.abs(v) < 0.005 ? "—" : brl(v));
 
 const TECHNICAL_MESSAGE = [
-  "O Adicional de IRPF (ou IRPF Mínimo), instituído pela Lei nº 15.270/2025, estabelece uma tributação mínima para pessoas físicas de alta renda, com alíquotas de até 10%, conforme o nível de rendimentos anuais.",
+  "A Tributação Mínima do IRPF (ou IRPF Mínimo), instituída pela Lei nº 15.270/2025, estabelece uma tributação mínima para pessoas físicas de alta renda, com alíquotas de até 10%, conforme o nível de rendimentos anuais.",
   "Diferentemente da sistemática tradicional, que prevê a isenção dos lucros e dividendos distribuídos à pessoa física, o novo regime passa a considerar esses rendimentos na apuração do IRPF Mínimo em determinadas situações, observadas as exclusões e deduções expressamente previstas em lei.",
-  "O mecanismo busca verificar se a tributação suportada pelo contribuinte ao longo do ano atingiu o patamar mínimo exigido. Caso contrário, poderá haver a incidência de Adicional de Imposto de Renda da Pessoa Física Mínimo (IRPF-M).",
+  "O mecanismo busca verificar se a tributação suportada pelo contribuinte ao longo do ano atingiu o patamar mínimo exigido. Caso contrário, poderá haver a incidência da Tributação Mínima do IRPF (IRPF-M).",
 ];
 
 const DEDUCTIONS_DYNAMIC =
-  "Na declaração de ajuste anual, deduções como despesas médicas, despesas com instrução, dependentes ou o desconto simplificado reduzem a base de cálculo e, por consequência, o imposto devido. O IRPF-M, por sua vez, é apurado sobre uma base ampliada de rendimentos, sem essas deduções, e o imposto apurado na declaração de ajuste é considerado na redução do valor devido a título de IRPF-M. " +
-  "Por isso, quando a tributação do contribuinte fica abaixo do patamar mínimo e há IRPF-M a recolher, a economia obtida com deduções na declaração de ajuste é compensada por um aumento equivalente do IRPF-M, e o benefício financeiro dessas deduções deixa de existir. Quando a tributação já supera o patamar mínimo, as deduções mantêm integralmente o seu efeito.";
+  "Na declaração de ajuste anual, deduções como despesas médicas, despesas com instrução, dependentes ou o desconto simplificado reduzem a base de cálculo e, consequentemente, o imposto apurado pela sistemática ordinária. O IRPF-M, por sua vez, é calculado sobre uma base ampliada de rendimentos, observadas as exclusões previstas em lei, sem reproduzir necessariamente essas deduções. " +
+  "Assim, quando há imposto mínimo residual a recolher, a redução do imposto ordinário proporcionada pelas deduções pode ser parcial ou integralmente neutralizada pelo IRPF-M, reduzindo ou eliminando seu benefício econômico. O efeito depende do resultado da apuração do imposto mínimo.";
 
 const METHOD_NOTES = [
   "Base de cálculo: rendimentos tributáveis, rendimentos sujeitos à tributação exclusiva ou definitiva e lucros e dividendos posteriores a 2025. Rendimentos isentos como poupança, LCI, LCA, CRI, CRA, fundos imobiliários, doações e heranças ficam fora da base.",
-  "Lucros e dividendos deliberados até 31/12/2025 não integram a base. Na falta de informação sobre a deliberação, a parcela foi tratada como posterior a 2025.",
+  "Lucros e dividendos deliberados até 31/12/2025 não integram a base.",
   "Imposto pago: imposto retido ou recolhido no ano e imposto sobre a tributação exclusiva; na falta de informação desse imposto, presume-se a alíquota de 15%.",
-  "Redutor do art. 16-B, por fonte pagadora: parcela posterior a 2025 × (alíquota efetiva de IRPJ e CSLL da empresa + alíquota do IRPF mínimo − alíquota nominal do setor), limitado ao saldo devido.",
+  "Redutor do art. 16-B, por fonte pagadora: parcela posterior a 2025 × (alíquota efetiva de IRPJ e CSLL da empresa + alíquota do IRPF mínimo − alíquota nominal do setor), limitado ao saldo devido. A aplicação depende de dados das fontes pagadoras (lucro e IRPJ e CSLL da empresa), e ainda não foi esclarecido como essas informações constarão da DIRPF 2027 (ano-calendário 2026).",
 ];
 
 export interface GeneratedReport {
@@ -433,7 +433,7 @@ function detailedPages(r: Report, p: GeneratePdfReportParams, eyebrow: string, i
   r.page({ eyebrow, title: "Apuração do IRPF mínimo", subtitle: `Memória de cálculo – emitido em ${issued}` });
   if (res.additionalTax > 0) {
     r.callout(
-      `A tributação suportada no ano não alcança o patamar mínimo exigido. Há IRPF-M a recolher de ${brl(res.additionalTax)}, conforme demonstrado na tabela abaixo.`,
+      `A tributação suportada no ano não alcança o patamar mínimo exigido. Há IRPF-M apurado de ${brl(res.additionalTax)}, conforme demonstrado na tabela abaixo, valor que é incorporado ao saldo do imposto a pagar ou a restituir na declaração de ajuste anual.`,
       "alert"
     );
   } else if (res.refund > 0) {
@@ -442,7 +442,7 @@ function detailedPages(r: Report, p: GeneratePdfReportParams, eyebrow: string, i
       "neutral"
     );
   } else {
-    r.callout("A tributação suportada no ano alcança o patamar mínimo exigido. Não há IRPF-M a recolher, conforme demonstrado na tabela abaixo.", "neutral");
+    r.callout("A tributação suportada no ano alcança o patamar mínimo exigido. Não há IRPF-M apurado, conforme demonstrado na tabela abaixo.", "neutral");
   }
   const rows: Row[] = [
     { cells: ["Base de cálculo sujeita ao IRPF mínimo", brl(res.subjectBase)] },
@@ -452,9 +452,9 @@ function detailedPages(r: Report, p: GeneratePdfReportParams, eyebrow: string, i
     { cells: ["(−) Redutor do art. 16-B", dash(res.reduction16B)] },
   ];
   if (res.refund > 0) rows.push({ cells: ["Restituição da retenção sobre dividendos", brl(res.refund)], kind: "highlight" });
-  rows.push({ cells: ["IRPF-M a recolher", brl(res.additionalTax)], kind: "total" });
+  rows.push({ cells: ["IRPF-M apurado", brl(res.additionalTax)], kind: "total" });
   r.table([{ label: "Descrição", width: WIDTH - 180 }, { label: "Valor", width: 180 }], rows);
-  const notes = ["Valores em R$."];
+  const notes = ["Valores em R$. O IRPF-M apurado é incorporado ao saldo do imposto a pagar ou a restituir na declaração de ajuste anual, conforme a sistemática legal."];
   if (res.presumedExclusiveTax > 0) notes.push(`O imposto pago inclui ${brl(res.presumedExclusiveTax)} presumidos à alíquota de 15% sobre a tributação exclusiva sem imposto informado.`);
   if (div.protectedTotal > 0) notes.push(`Lucros e dividendos deliberados até 2025 (${brl(div.protectedTotal)}) não integram a base.`);
   if (div.sourcesMissingPjData > 0) notes.push(`${div.sourcesMissingPjData} fonte(s) pagadora(s) sem dados da empresa: redutor do art. 16-B não calculado para elas.`);
@@ -484,6 +484,9 @@ function detailedPages(r: Report, p: GeneratePdfReportParams, eyebrow: string, i
   taxRows.push({ cells: ["Imposto pago ou retido considerado", brl(res.totalTaxPaid)], kind: "total" });
   r.table([{ label: "Imposto pago ou retido", width: WIDTH - 180 }, { label: "Valor", width: 180 }], taxRows);
   r.footnote("Valores em R$. O imposto devido na declaração de ajuste anual não é somado ao imposto pago, para que o mesmo imposto não seja considerado duas vezes.");
+  r.footnote(
+    "Nota metodológica: a inclusão dos rendimentos na base de cálculo do IRPF-M observa sua natureza e as hipóteses legais de inclusão e exclusão. A classificação apresentada considera as informações disponibilizadas e está sujeita à confirmação do enquadramento legal de cada rendimento, com base na documentação correspondente."
+  );
 
   // 3. Dividend sources
   if (p.dividendSources.length > 0) {
@@ -509,7 +512,7 @@ function detailedPages(r: Report, p: GeneratePdfReportParams, eyebrow: string, i
       rows
     );
     r.footnote(
-      `Valores em R$. Redutor por fonte = parcela posterior × (alíquota efetiva de IRPJ e CSLL + alíquota do IRPF mínimo − alíquota nominal do setor). Soma das fontes: ${brl(div.redutorPotential)}; redutor aplicado, limitado ao saldo devido: ${brl(res.reduction16B)}.`
+      `Valores em R$. Redutor por fonte = parcela posterior × (alíquota efetiva de IRPJ e CSLL + alíquota do IRPF mínimo − alíquota nominal do setor). Soma das fontes: ${brl(div.redutorPotential)}; redutor aplicado, limitado ao saldo devido: ${brl(res.reduction16B)}. A falta de documentação sobre a data de deliberação dos lucros e dividendos é uma limitação desta análise, e não prova de que a deliberação tenha ocorrido após 2025.`
     );
   }
 }
@@ -519,9 +522,9 @@ function simulatorPages(r: Report, p: GeneratePdfReportParams, eyebrow: string, 
   const period = p.simPeriod === "annual" ? "anual" : "mensal";
   r.page({ eyebrow, title: "Simulação do IRPF mínimo", subtitle: `Simulação ${period} por faixas de renda – emitido em ${issued}` });
   if (s.additionalMinTax > 0) {
-    r.callout(`Na composição simulada, a tributação não alcança o patamar mínimo. Haveria IRPF-M a recolher de ${brl(s.additionalMinTax)}.`, "alert");
+    r.callout(`Na composição simulada, a tributação não alcança o patamar mínimo. Haveria IRPF-M apurado de ${brl(s.additionalMinTax)}, incorporado ao saldo do imposto a pagar ou a restituir na declaração de ajuste anual.`, "alert");
   } else {
-    r.callout("Na composição simulada, a tributação alcança o patamar mínimo exigido. Não haveria IRPF-M a recolher.", "neutral");
+    r.callout("Na composição simulada, a tributação alcança o patamar mínimo exigido. Não haveria IRPF-M apurado.", "neutral");
   }
   r.table(
     [{ label: "Descrição", width: WIDTH - 180 }, { label: "Valor", width: 180 }],
@@ -535,7 +538,7 @@ function simulatorPages(r: Report, p: GeneratePdfReportParams, eyebrow: string, 
       { cells: ["Base de cálculo do IRPF mínimo", brl(s.minimumBase)] },
       { cells: ["Alíquota efetiva do IRPF mínimo", formatPercent(s.minimumRate)] },
       { cells: ["IRPF mínimo devido", brl(s.minimumTaxDue)], kind: "highlight" },
-      { cells: ["IRPF-M a recolher", brl(s.additionalMinTax)], kind: "total" },
+      { cells: ["IRPF-M apurado", brl(s.additionalMinTax)], kind: "total" },
     ]
   );
   const deduction =
