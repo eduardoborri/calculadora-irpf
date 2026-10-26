@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Download, FileText, X } from "lucide-react";
+import { Download, FileSpreadsheet, FileText, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import {
+  DAA_TAX_ID,
   DEFAULT_INCOME_ITEMS,
   DEFAULT_TAX_ITEMS,
   EXCLUSIVE_INCOME_ID,
@@ -15,11 +16,14 @@ import { CalculationResult, DividendSource, IncomeItem, ParsedDirpf, SimulationR
 import { newDividendSource, summarizeDividends } from "../utils/dividends";
 import { formatCurrency } from "../utils/format";
 import { buildPdfReport, GeneratePdfReportParams, preloadReportFiles, ReportFiles } from "../utils/pdfReport";
+import { generateXlsxReport, preloadExcel } from "../utils/xlsxReport";
 import DetailedView from "./DetailedView";
 import ImportDeclarationDialog from "./ImportDeclarationDialog";
 import ImportStatusBadge, { ImportInfo } from "./ImportStatusBadge";
 import Simulator from "./Simulator";
 import WelcomeScreen from "./WelcomeScreen";
+
+type ExportKind = "pdf" | "xlsx";
 
 export default function Calculator() {
   const [incomeItems, setIncomeItems] = useState<IncomeItem[]>(DEFAULT_INCOME_ITEMS);
@@ -30,11 +34,12 @@ export default function Calculator() {
   const [taxpayerLabel, setTaxpayerLabel] = useState("");
   // Calendar year of the imported declaration; before 2026 the report is a projection.
   const [calendarYear, setCalendarYear] = useState<number | undefined>();
+  // Status of the last export (PDF report or spreadsheet), shown in a banner.
   const [pdfStatus, setPdfStatus] = useState<
     | { state: "idle" }
-    | { state: "generating" }
-    | { state: "done"; url: string; fileName: string; usedFallbackFont: boolean }
-    | { state: "error"; message: string }
+    | { state: "generating"; kind: ExportKind }
+    | { state: "done"; kind: ExportKind; url: string; fileName: string; usedFallbackFont: boolean }
+    | { state: "error"; kind: ExportKind; message: string }
   >({ state: "idle" });
   // Welcome screen is shown until the user picks a way to start (or data exists).
   const [started, setStarted] = useState(false);
@@ -296,7 +301,9 @@ export default function Calculator() {
     // Art. 16-B redutor and withholding, source by source (see utils/dividends.ts)
     const dividends = summarizeDividends(dividendSources, minimumAliquot);
 
-    const totalTaxPaid = taxItems.reduce((acc, item) => acc + item.value, 0) + presumedExclusiveTax + dividends.withholdingTotal;
+    // The tax due in the annual declaration is informative: adding it would count the same tax twice.
+    const declaredTaxPaid = taxItems.reduce((acc, item) => acc + (item.id === DAA_TAX_ID ? 0 : item.value), 0);
+    const totalTaxPaid = declaredTaxPaid + presumedExclusiveTax + dividends.withholdingTotal;
     const minimumTaxDue = subjectBase * minimumAliquot;
 
     // The 16-B reduction can only "zero" the tax due, never generate a refund.
@@ -344,6 +351,7 @@ export default function Calculator() {
   const reportFiles = useRef<ReportFiles | null>(null);
   useEffect(() => {
     preloadReportFiles().then((files) => (reportFiles.current = files));
+    preloadExcel().catch(() => {}); // retried on click
   }, []);
 
   const handleExportPdf = () => {
@@ -373,12 +381,12 @@ export default function Calculator() {
       reportFiles.current = files;
       const { blob, fileName, usedFallbackFont } = buildPdfReport(params, files);
       const url = URL.createObjectURL(blob);
-      setPdfStatus({ state: "done", url, fileName, usedFallbackFont });
+      setPdfStatus({ state: "done", kind: "pdf", url, fileName, usedFallbackFont });
       triggerDownload(url, fileName);
     };
     const fail = (err: unknown) => {
       console.error(err);
-      setPdfStatus({ state: "error", message: err instanceof Error ? err.message : String(err) });
+      setPdfStatus({ state: "error", kind: "pdf", message: err instanceof Error ? err.message : String(err) });
     };
 
     const files = reportFiles.current;
@@ -390,10 +398,36 @@ export default function Calculator() {
       }
       return;
     }
-    setPdfStatus({ state: "generating" });
+    setPdfStatus({ state: "generating", kind: "pdf" });
     preloadReportFiles()
       .then(finish)
       .catch(fail);
+  };
+
+  // Spreadsheet with the full calculation (Excel formulas) behind the result.
+  const handleExportXlsx = () => {
+    if (pdfStatus.state === "generating") return;
+    if (pdfStatus.state === "done") URL.revokeObjectURL(pdfStatus.url);
+    setPdfStatus({ state: "generating", kind: "xlsx" });
+    generateXlsxReport({
+      incomeItems,
+      taxItems,
+      dividendSources,
+      results,
+      taxpayerLabel,
+      taxpayerName: taxpayerLabel.split(" · ")[0].trim(),
+      calendarYear,
+      dataOrigin,
+    })
+      .then(({ blob, fileName }) => {
+        const url = URL.createObjectURL(blob);
+        setPdfStatus({ state: "done", kind: "xlsx", url, fileName, usedFallbackFont: false });
+        triggerDownload(url, fileName);
+      })
+      .catch((err) => {
+        console.error(err);
+        setPdfStatus({ state: "error", kind: "xlsx", message: err instanceof Error ? err.message : String(err) });
+      });
   };
 
   const isEmpty =
@@ -438,6 +472,14 @@ export default function Calculator() {
             <Download className="w-4 h-4" />
             Exportar PDF
           </button>
+          <button
+            onClick={handleExportXlsx}
+            title="Planilha Excel com a memória de cálculo completa da apuração, em fórmulas"
+            className="flex items-center gap-2 text-sm font-semibold bg-white text-primary px-4 py-2.5 rounded border-2 border-primary hover:bg-paper transition-colors cursor-pointer"
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            Exportar planilha
+          </button>
         </div>
       </header>
 
@@ -475,23 +517,29 @@ export default function Calculator() {
           }`}
         >
           <p className={`flex-1 ${pdfStatus.state === "error" ? "text-accent" : "text-ink"}`}>
-            {pdfStatus.state === "generating" && "Gerando o relatório em PDF…"}
+            {pdfStatus.state === "generating" && (pdfStatus.kind === "pdf" ? "Gerando o relatório em PDF…" : "Gerando a planilha…")}
             {pdfStatus.state === "done" && (
               <>
-                Relatório gerado: {pdfStatus.fileName}.{" "}
+                {pdfStatus.kind === "pdf" ? "Relatório gerado" : "Planilha gerada"}: {pdfStatus.fileName}.{" "}
                 {pdfStatus.usedFallbackFont && "A fonte Inter não carregou; o PDF saiu em Helvetica. "}
                 Se o download não começou,{" "}
                 <a href={pdfStatus.url} download={pdfStatus.fileName} className="text-action px-0 underline">
                   baixe novamente
-                </a>{" "}
-                ou{" "}
-                <a href={pdfStatus.url} target="_blank" rel="noreferrer" className="text-action px-0 underline">
-                  abra em nova aba
                 </a>
+                {pdfStatus.kind === "pdf" && (
+                  <>
+                    {" "}
+                    ou{" "}
+                    <a href={pdfStatus.url} target="_blank" rel="noreferrer" className="text-action px-0 underline">
+                      abra em nova aba
+                    </a>
+                  </>
+                )}
                 .
               </>
             )}
-            {pdfStatus.state === "error" && `Não foi possível gerar o relatório: ${pdfStatus.message}`}
+            {pdfStatus.state === "error" &&
+              `Não foi possível gerar ${pdfStatus.kind === "pdf" ? "o relatório" : "a planilha"}: ${pdfStatus.message}`}
           </p>
           {pdfStatus.state !== "generating" && (
             <button onClick={() => setPdfStatus({ state: "idle" })} aria-label="Fechar aviso" className="text-text-gray hover:text-ink">

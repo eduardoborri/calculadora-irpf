@@ -59,3 +59,6 @@ export const AGGREGATE_SOURCE_NOTE = `Fontes com menos de R$ ${SMALL_SOURCE_THRE
 export const EXCLUSIVE_INCOME_ID = "i9";
 export const EXCLUSIVE_TAX_ID = "t14";
 export const PRESUMED_EXCLUSIVE_TAX_RATE = 0.15;
+// Tax due in the annual adjustment declaration: informative only, never added
+// to the tax paid (it would count the same tax twice).
+export const DAA_TAX_ID = "t13";

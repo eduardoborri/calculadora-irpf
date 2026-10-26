@@ -1,6 +1,7 @@
 import { jsPDF } from "jspdf";
 import { CalculationResult, DividendSource, IncomeItem, TaxPaymentItem } from "../types";
-import { formatCurrency, formatPercent } from "./format";
+import { DAA_TAX_ID } from "../constants";
+import { formatCurrency, formatPercent, slug } from "./format";
 
 /*
  * PDF report in the GSGA-PR house style (A4 landscape), reproduced from the
@@ -415,16 +416,6 @@ export function buildPdfReport(params: GeneratePdfReportParams, files: ReportFil
 // The IRPF-M applies from calendar year 2026 on (Lei nº 15.270/2025).
 const IRPFM_FIRST_CALENDAR_YEAR = 2026;
 
-// "Marina Coelho Leme" → "marina_coelho_leme" (safe file name).
-function slug(text: string): string {
-  return text
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "");
-}
-
 function detailedPages(r: Report, p: GeneratePdfReportParams, eyebrow: string, issued: string) {
   const res = p.results;
   const div = res.dividends;
@@ -478,7 +469,7 @@ function detailedPages(r: Report, p: GeneratePdfReportParams, eyebrow: string, i
   );
 
   r.y += 8;
-  const taxRows: Row[] = p.taxItems.filter((t) => t.value !== 0).map((t) => ({ cells: [t.label, brl(t.value)] }));
+  const taxRows: Row[] = p.taxItems.filter((t) => t.value !== 0 && t.id !== DAA_TAX_ID).map((t) => ({ cells: [t.label, brl(t.value)] }));
   if (res.presumedExclusiveTax > 0) taxRows.push({ cells: ["Imposto presumido sobre a tributação exclusiva (15%)", brl(res.presumedExclusiveTax)] });
   if (div.withholdingTotal > 0) taxRows.push({ cells: ["Retenção de 10% sobre lucros e dividendos", brl(div.withholdingTotal)] });
   taxRows.push({ cells: ["Imposto pago ou retido considerado", brl(res.totalTaxPaid)], kind: "total" });
