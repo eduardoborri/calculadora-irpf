@@ -413,6 +413,13 @@ export default function Calculator() {
     <div className="max-w-[1240px] mx-auto px-4 md:px-8 py-8 space-y-8">
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
+          <img
+            src={`${import.meta.env.BASE_URL}brand/gsga-logo.png`}
+            alt="Gaia Silva Gaede Advogados"
+            width={640}
+            height={130}
+            className="h-9 w-auto mb-5"
+          />
           <h1 className="text-[32px] leading-tight font-semibold text-primary">Calculadora IRPF-M</h1>
           <p className="text-text-gray mt-1">GSGA-PR, apuração pela Lei nº 15.270/2025</p>
         </div>
