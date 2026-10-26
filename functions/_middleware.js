@@ -1,7 +1,8 @@
-// Cloudflare Pages: asks for a shared password before serving any page.
-// The password is the SITE_PASSWORD environment variable, set in the
-// Cloudflare dashboard (Settings → Variables and Secrets). Any user name is
-// accepted. Without the variable the site stays closed.
+// Cloudflare Pages: asks for a shared user name and password before serving
+// any page. Both come from environment variables set in the Cloudflare
+// dashboard (Settings → Variables and Secrets): SITE_USER (case-insensitive)
+// and SITE_PASSWORD. Without SITE_PASSWORD the site stays closed; without
+// SITE_USER any user name is accepted.
 export async function onRequest({ request, env, next }) {
   const expected = env.SITE_PASSWORD;
   if (!expected) {
@@ -15,8 +16,12 @@ export async function onRequest({ request, env, next }) {
   if (header.startsWith("Basic ")) {
     try {
       const decoded = new TextDecoder().decode(Uint8Array.from(atob(header.slice(6)), (c) => c.charCodeAt(0)));
-      const password = decoded.slice(decoded.indexOf(":") + 1);
-      if (await sameText(password, expected)) return next();
+      const separator = decoded.indexOf(":");
+      const user = decoded.slice(0, separator).trim().toLowerCase();
+      const password = decoded.slice(separator + 1);
+      const expectedUser = (env.SITE_USER || "").trim().toLowerCase();
+      const userOk = !expectedUser || (await sameText(user, expectedUser));
+      if ((await sameText(password, expected)) && userOk) return next();
     } catch {
       // Malformed header: fall through to the password prompt.
     }
