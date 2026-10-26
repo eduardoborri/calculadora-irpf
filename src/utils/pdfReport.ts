@@ -344,9 +344,9 @@ const brl = (v: number) => formatCurrency(v);
 const dash = (v: number) => (Math.abs(v) < 0.005 ? "—" : brl(v));
 
 const TECHNICAL_MESSAGE = [
-  "O IRPF Mínimo, instituído pela Lei nº 15.270/2025, estabelece uma tributação mínima para pessoas físicas de alta renda, com alíquotas efetivas de até 10%, conforme o nível de rendimentos anuais.",
-  "Diferentemente da sistemática tradicional, que prevê a isenção de lucros e dividendos distribuídos à pessoa física, o novo regime considera determinados rendimentos na apuração de uma base de cálculo ampliada, observadas as exclusões e deduções expressamente previstas em lei.",
-  "O mecanismo busca verificar se a tributação suportada pelo contribuinte ao longo do ano atingiu o patamar mínimo exigido. Caso contrário, poderá haver a incidência de Imposto de Renda da Pessoa Física Mínimo (IRPF-M), calculado conforme as regras legais aplicáveis.",
+  "O Adicional de IRPF (ou IRPF Mínimo), instituído pela Lei nº 15.270/2025, estabelece uma tributação mínima para pessoas físicas de alta renda, com alíquotas de até 10%, conforme o nível de rendimentos anuais.",
+  "Diferentemente da sistemática tradicional, que prevê a isenção dos lucros e dividendos distribuídos à pessoa física, o novo regime passa a considerar esses rendimentos na apuração do IRPF Mínimo em determinadas situações, observadas as exclusões e deduções expressamente previstas em lei.",
+  "O mecanismo busca verificar se a tributação suportada pelo contribuinte ao longo do ano atingiu o patamar mínimo exigido. Caso contrário, poderá haver a incidência de Adicional de Imposto de Renda da Pessoa Física Mínimo (IRPF-M).",
 ];
 
 const DEDUCTIONS_DYNAMIC =
@@ -379,11 +379,11 @@ export function buildPdfReport(params: GeneratePdfReportParams, files: ReportFil
   const issued = new Date().toLocaleDateString("pt-BR");
   const eyebrow = params.taxpayerLabel?.trim() || "IRPF Mínimo · Lei nº 15.270/2025";
 
-  // 1. Technical message
-  r.page({ eyebrow, title: "Mensagem técnica", subtitle: "Regime do IRPF mínimo e efeitos sobre a apuração" }, true);
+  // 1. General aspects of the IRPF Mínimo
+  r.page({ eyebrow, title: "IRPF Mínimo: aspectos gerais", subtitle: "Regime do IRPF mínimo e efeitos sobre a apuração" }, true);
   TECHNICAL_MESSAGE.forEach((p) => r.paragraph(p));
   r.y += 6;
-  r.callout(DEDUCTIONS_DYNAMIC, "alert", "Dinâmica fiscal relevante: o efeito das deduções");
+  r.callout(DEDUCTIONS_DYNAMIC, "alert", "Dinâmica relevante: o efeito das deduções");
 
   // 2. Methodological notes, before the calculations
   r.page({ eyebrow, title: "Notas metodológicas", subtitle: "Premissas adotadas na apuração" });
