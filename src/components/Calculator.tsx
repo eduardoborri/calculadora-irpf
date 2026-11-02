@@ -449,7 +449,7 @@ export default function Calculator() {
 
   return (
     <div className="max-w-[1240px] mx-auto px-4 md:px-8 py-8 space-y-8">
-      <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+      <header className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
         <div>
           <img
             src={`${import.meta.env.BASE_URL}brand/gsga-logo.png`}

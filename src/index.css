@@ -44,7 +44,14 @@
     /* Regular (400) for running text: the light weight read thin and grey on
        screens, and turned into Segoe UI Light where Aptos is missing. */
     font-weight: 400;
-    /* Aligned digits in every amount column. */
+  }
+
+  /* Aligned digits in every amount column and field. Not on the whole body:
+     Inter's tabular set also widens the hyphen ("IRPF-M", "GSGA-PR"). Other
+     figures take the tabular-nums utility. */
+  td,
+  th,
+  input {
     font-variant-numeric: tabular-nums;
   }
 }
@@ -91,7 +98,7 @@
   }
 
   .text-action {
-    @apply inline-flex items-center gap-1.5 text-sm font-semibold text-secondary hover:text-primary rounded px-1 cursor-pointer;
+    @apply inline-flex items-center gap-1.5 text-sm font-semibold text-secondary hover:text-primary rounded px-1 cursor-pointer whitespace-nowrap;
   }
 
   /* Two-option switch (period, deduction mode): one white pill on a paper track. */

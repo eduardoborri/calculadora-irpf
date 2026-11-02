@@ -31,7 +31,7 @@ export default function TaxTable({ items, totalTaxPaid, presumedExclusiveTax, di
 
   return (
     <section className="space-y-3">
-      <div className="flex items-baseline justify-between gap-4">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <h2 className="section-title">Imposto pago ou retido</h2>
         <button onClick={onAdd} className="text-action">
           <Plus className="w-4 h-4" />

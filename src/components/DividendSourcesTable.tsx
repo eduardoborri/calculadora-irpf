@@ -29,7 +29,7 @@ export default function DividendSourcesTable({ sources, summary, onAdd, onRemove
 
   return (
     <section className="space-y-3">
-      <div className="flex items-baseline justify-between gap-4">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <h2 className="section-title">Lucros e dividendos por fonte pagadora</h2>
         <button onClick={onAdd} className="text-action">
           <Plus className="w-4 h-4" />
@@ -44,11 +44,11 @@ export default function DividendSourcesTable({ sources, summary, onAdd, onRemove
 
       <div className="card">
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse min-w-[760px]">
+          <table className="w-full border-collapse min-w-[920px]">
             <thead>
               <tr>
                 <th className="table-header w-8"></th>
-                <th className="table-header">Fonte pagadora</th>
+                <th className="table-header min-w-48">Fonte pagadora</th>
                 <th className="table-header text-right w-36">Total recebido</th>
                 <th className="table-header text-right w-36">Deliberado até 2025</th>
                 <th className="table-header text-right w-36">Posterior (sujeito)</th>
