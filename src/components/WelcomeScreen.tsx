@@ -10,8 +10,8 @@ interface WelcomeScreenProps {
 // alternatives as plain choices below it.
 export default function WelcomeScreen({ onImport, onManual, onSimulator }: WelcomeScreenProps) {
   return (
-    <section className="bg-white border border-rule rounded-lg px-8 py-10 md:px-12 md:py-12 max-w-3xl">
-      <h2 className="text-[32px] leading-tight font-semibold text-primary">Comece pela declaração do cliente</h2>
+    <section className="bg-white border border-rule rounded-lg px-6 py-8 md:px-12 md:py-12">
+      <h2 className="text-2xl md:text-[32px] leading-tight font-semibold text-primary">Comece pela declaração do cliente</h2>
       <p className="mt-3 text-base text-text-gray leading-relaxed max-w-[60ch]">
         A calculadora lê o PDF da declaração de ajuste anual, preenche rendimentos, impostos e fontes de dividendos, e confere cada valor com os
         totais impressos na própria declaração. O arquivo é lido só neste navegador.

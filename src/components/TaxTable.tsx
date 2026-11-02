@@ -4,6 +4,7 @@ import { DEFAULT_TAX_ITEMS, EXCLUSIVE_TAX_ID, PRESUMED_EXCLUSIVE_TAX_RATE } from
 import { TaxPaymentItem } from "../types";
 import { formatCurrency, formatPercent } from "../utils/format";
 import CurrencyInput from "./shared/CurrencyInput";
+import LabelField from "./shared/LabelField";
 import ShowAllRowsToggle from "./shared/ShowAllRowsToggle";
 import Tooltip from "./shared/Tooltip";
 
@@ -40,26 +41,25 @@ export default function TaxTable({ items, totalTaxPaid, presumedExclusiveTax, di
 
       <div className="card">
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse">
-            <thead>
+          {/* Below 640px each row becomes two lines: the description and its delete
+              button, then the value field at full width. */}
+          <table className="w-full border-collapse max-sm:block">
+            <thead className="max-sm:hidden">
               <tr>
                 <th className="table-header">Imposto</th>
                 <th className="table-header text-right w-44">Valor (R$)</th>
                 <th className="table-header w-12"></th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="max-sm:block">
               {visible.map((item) => (
-                <tr key={item.id} className="hover:bg-gray-50 transition-colors group border-b border-gray-100 last:border-0">
-                  <td className="table-cell">
-                    <div className="flex items-center">
-                      <input
-                        type="text"
-                        value={item.label}
-                        aria-label="Descrição do imposto"
-                        onChange={(e) => onUpdate(item.id, "label", e.target.value)}
-                        className="flex-1 bg-transparent border-none focus:ring-0 p-0 text-primary font-medium text-sm"
-                      />
+                <tr
+                  key={item.id}
+                  className="hover:bg-gray-50 transition-colors group border-b border-gray-100 last:border-0 max-sm:grid max-sm:grid-cols-[1fr_auto] max-sm:items-center max-sm:gap-x-3 max-sm:gap-y-2 max-sm:px-4 max-sm:py-3"
+                >
+                  <td className="table-cell max-sm:row-start-1 max-sm:col-start-1 max-sm:p-0 max-sm:border-0">
+                    <div className="flex items-start">
+                      <LabelField value={item.label} ariaLabel="Descrição do imposto" onChange={(v) => onUpdate(item.id, "label", v)} />
                       <Tooltip text={item.description} />
                     </div>
                     {item.id === EXCLUSIVE_TAX_ID && presumedExclusiveTax > 0 && (
@@ -69,7 +69,7 @@ export default function TaxTable({ items, totalTaxPaid, presumedExclusiveTax, di
                       </p>
                     )}
                   </td>
-                  <td className="table-cell text-right">
+                  <td className="table-cell text-right max-sm:row-start-2 max-sm:col-start-1 max-sm:col-span-2 max-sm:p-0 max-sm:border-0">
                     <div className="flex items-center justify-end gap-2">
                       <span className="text-gray-500 text-xs font-semibold">R$</span>
                       <CurrencyInput
@@ -80,7 +80,7 @@ export default function TaxTable({ items, totalTaxPaid, presumedExclusiveTax, di
                       />
                     </div>
                   </td>
-                  <td className="table-cell text-center">
+                  <td className="table-cell text-center max-sm:row-start-1 max-sm:col-start-2 max-sm:p-0 max-sm:border-0">
                     <button
                       onClick={() => onRemove(item.id)}
                       aria-label={`Excluir linha ${item.label}`}
@@ -92,21 +92,23 @@ export default function TaxTable({ items, totalTaxPaid, presumedExclusiveTax, di
                 </tr>
               ))}
               {dividendWithholding > 0 && (
-                <tr>
-                  <td className="table-cell text-sm text-primary font-medium">
+                <tr className="max-sm:flex max-sm:flex-col max-sm:gap-2 max-sm:px-4 max-sm:py-3">
+                  <td className="table-cell text-sm text-primary font-medium max-sm:p-0 max-sm:border-0">
                     Retenção de 10% sobre dividendos posteriores a 2025
                     <p className="text-xs text-text-gray">Calculada na tabela de fontes pagadoras, nas fontes marcadas com retenção.</p>
                   </td>
-                  <td className="table-cell text-right text-primary font-semibold tabular-nums">{formatCurrency(dividendWithholding)}</td>
-                  <td className="table-cell"></td>
+                  <td className="table-cell text-right text-primary font-semibold tabular-nums max-sm:p-0 max-sm:border-0">
+                    {formatCurrency(dividendWithholding)}
+                  </td>
+                  <td className="table-cell max-sm:hidden"></td>
                 </tr>
               )}
             </tbody>
-            <tfoot>
-              <tr className="table-total">
-                <td>Total considerado</td>
-                <td className="text-right tabular-nums">{formatCurrency(totalTaxPaid)}</td>
-                <td></td>
+            <tfoot className="max-sm:block">
+              <tr className="table-total max-sm:flex max-sm:justify-between max-sm:gap-4 max-sm:border-t-[3px] max-sm:border-double max-sm:border-rule">
+                <td className="max-sm:border-0">Total considerado</td>
+                <td className="text-right tabular-nums max-sm:border-0">{formatCurrency(totalTaxPaid)}</td>
+                <td className="max-sm:hidden"></td>
               </tr>
             </tfoot>
           </table>

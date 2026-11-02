@@ -17,6 +17,7 @@ import { newDividendSource, summarizeDividends } from "../utils/dividends";
 import { formatCurrency } from "../utils/format";
 import { buildPdfReport, GeneratePdfReportParams, preloadReportFiles, ReportFiles } from "../utils/pdfReport";
 import { generateXlsxReport, preloadExcel } from "../utils/xlsxReport";
+import CalculationMemo from "./CalculationMemo";
 import DetailedView from "./DetailedView";
 import ImportDeclarationDialog from "./ImportDeclarationDialog";
 import ImportStatusBadge, { ImportInfo } from "./ImportStatusBadge";
@@ -433,6 +434,9 @@ export default function Calculator() {
   const isEmpty =
     dividendSources.length === 0 && incomeItems.every((i) => i.value === 0) && taxItems.every((t) => t.value === 0);
   const showWelcome = !started && isEmpty;
+  // The simulator always has values of its own; the apuração needs some first.
+  const canExportPdf = activeTab === "simulator" || !isEmpty;
+  const nothingToExport = "Importe a declaração ou preencha os valores para exportar.";
 
   const dataOrigin = importInfo
     ? `declaração importada (${importInfo.fileName ?? "PDF"}${importInfo.fromOcr ? ", lida por OCR" : ""})`
@@ -457,25 +461,27 @@ export default function Calculator() {
           <h1 className="text-[32px] leading-tight font-semibold text-primary">Calculadora IRPF-M</h1>
           <p className="text-text-gray mt-1">GSGA-PR, apuração pela Lei nº 15.270/2025</p>
         </div>
+        {/* Importing is the one filled action until there is something to export;
+            the exports stay outlined and say why they are off while empty. */}
         <div className="flex flex-wrap items-center gap-3">
-          <button
-            onClick={() => setIsImportOpen(true)}
-            className="flex items-center gap-2 text-sm font-semibold bg-white text-primary px-4 py-2.5 rounded border-2 border-primary hover:bg-paper transition-colors cursor-pointer"
-          >
+          <button onClick={() => setIsImportOpen(true)} className={isEmpty ? "btn-filled" : "btn-outline"}>
             <FileText className="w-4 h-4" />
             Importar declaração
           </button>
           <button
             onClick={handleExportPdf}
-            className="flex items-center gap-2 text-sm font-semibold bg-primary text-white px-4 py-2.5 rounded border-2 border-primary hover:bg-primary/90 transition-colors cursor-pointer"
+            disabled={!canExportPdf}
+            title={canExportPdf ? undefined : nothingToExport}
+            className="btn-outline"
           >
             <Download className="w-4 h-4" />
             Exportar PDF
           </button>
           <button
             onClick={handleExportXlsx}
-            title="Planilha Excel com a memória de cálculo completa da apuração, em fórmulas"
-            className="flex items-center gap-2 text-sm font-semibold bg-white text-primary px-4 py-2.5 rounded border-2 border-primary hover:bg-paper transition-colors cursor-pointer"
+            disabled={isEmpty}
+            title={isEmpty ? nothingToExport : "Planilha Excel com a memória de cálculo completa da apuração, em fórmulas"}
+            className="btn-outline"
           >
             <FileSpreadsheet className="w-4 h-4" />
             Exportar planilha
@@ -564,12 +570,26 @@ export default function Calculator() {
         </label>
       )}
 
+      {/* The first screen keeps the working layout: the empty memo stands where
+          the answer will appear (desktop only; on narrower screens it would sit
+          under the welcome as a block of zeros). */}
       {activeTab === "detailed" && showWelcome && (
-        <WelcomeScreen
-          onImport={() => setIsImportOpen(true)}
-          onManual={() => setStarted(true)}
-          onSimulator={() => setActiveTab("simulator")}
-        />
+        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_380px] gap-10 items-start">
+          <WelcomeScreen
+            onImport={() => setIsImportOpen(true)}
+            onManual={() => setStarted(true)}
+            onSimulator={() => setActiveTab("simulator")}
+          />
+          <div className="hidden xl:block">
+            <CalculationMemo
+              results={results}
+              incomeItems={incomeItems}
+              taxItems={taxItems}
+              dividendSources={dividendSources}
+              dataOrigin={dataOrigin}
+            />
+          </div>
+        </div>
       )}
 
       {activeTab === "detailed" && !showWelcome && (

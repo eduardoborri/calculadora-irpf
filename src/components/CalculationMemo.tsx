@@ -10,7 +10,16 @@ interface CalculationMemoProps {
   dividendSources: DividendSource[];
   // Where the inputs came from, e.g. "declaração importada (arquivo.pdf)".
   dataOrigin: string;
-  onExportPdf: () => void;
+  // Left out on the welcome screen, where there is nothing to export yet.
+  onExportPdf?: () => void;
+}
+
+// The answer of the apuração, shared by the memo and the result bar.
+export function resultSummary({ additionalTax, refund }: CalculationResult) {
+  return {
+    label: refund > 0 ? "Restituição" : "IRPF-M apurado",
+    value: formatCurrency(additionalTax > 0 ? additionalTax : refund),
+  };
 }
 
 interface MemoLine {
@@ -31,6 +40,7 @@ export default function CalculationMemo({ results, incomeItems, taxItems, divide
   const [open, setOpen] = useState<string | null>(null);
   const { subjectBase, minimumAliquot, minimumTaxDue, totalTaxPaid, reduction16B, additionalTax, refund, presumedExclusiveTax, dividends } = results;
 
+  const summary = resultSummary(results);
   const sourceName = new Map(dividendSources.map((s) => [s.id, s.name]));
   const aliquotNote =
     subjectBase <= MIN_TAX_THRESHOLD
@@ -91,7 +101,7 @@ export default function CalculationMemo({ results, incomeItems, taxItems, divide
   ];
 
   return (
-    <aside className="bg-primary text-white rounded-lg p-6 xl:sticky xl:top-6 space-y-5" aria-label="Memória de cálculo">
+    <aside className="bg-primary text-white rounded-lg p-6 space-y-5" aria-label="Memória de cálculo">
       <h2 className="text-[21px] font-semibold leading-tight">Memória de cálculo</h2>
 
       <ol className="space-y-1">
@@ -132,33 +142,24 @@ export default function CalculationMemo({ results, incomeItems, taxItems, divide
           =
         </span>
         <div>
-          <p className="text-sm text-white/85">{refund > 0 ? "Restituição" : "IRPF-M apurado"}</p>
-          {additionalTax > 0 ? (
-            <p className="mt-1 inline-block bg-accent text-white text-[32px] leading-none font-semibold px-2 py-1.5 rounded tabular-nums">
-              {formatCurrency(additionalTax)}
-            </p>
-          ) : refund > 0 ? (
-            <p className="mt-1 text-[32px] leading-none font-semibold tabular-nums">{formatCurrency(refund)}</p>
-          ) : (
-            <>
-              <p className="mt-1 text-[32px] leading-none font-semibold tabular-nums">{formatCurrency(0)}</p>
-              {totalTaxPaid > minimumTaxDue && (
-                <p className="text-xs text-white/70 mt-2">
-                  O imposto já pago supera o mínimo em {formatCurrency(totalTaxPaid - minimumTaxDue)}.
-                </p>
-              )}
-            </>
+          <p className="text-sm text-white/85">{summary.label}</p>
+          {/* The answer in white at the largest size on the screen: the coral fill read as an error. */}
+          <p className="mt-1 text-[32px] leading-none font-semibold tabular-nums">{summary.value}</p>
+          {additionalTax === 0 && refund === 0 && totalTaxPaid > minimumTaxDue && (
+            <p className="text-xs text-white/70 mt-2">O imposto já pago supera o mínimo em {formatCurrency(totalTaxPaid - minimumTaxDue)}.</p>
           )}
         </div>
       </div>
 
-      <button
-        type="button"
-        onClick={onExportPdf}
-        className="w-full px-4 py-2.5 rounded border border-white/40 text-sm font-semibold hover:bg-white/10 cursor-pointer"
-      >
-        Exportar relatório em PDF
-      </button>
+      {onExportPdf && (
+        <button
+          type="button"
+          onClick={onExportPdf}
+          className="w-full px-4 py-2.5 rounded border border-white/40 text-sm font-semibold hover:bg-white/10 cursor-pointer"
+        >
+          Exportar relatório em PDF
+        </button>
+      )}
 
       <details className="text-xs text-white/70 group">
         <summary className="cursor-pointer text-white/85 font-semibold list-none">Premissas aplicadas</summary>

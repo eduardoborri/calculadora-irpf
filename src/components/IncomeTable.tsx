@@ -4,6 +4,7 @@ import { DEFAULT_INCOME_ITEMS } from "../constants";
 import { IncomeItem } from "../types";
 import { formatCurrency } from "../utils/format";
 import CurrencyInput from "./shared/CurrencyInput";
+import LabelField from "./shared/LabelField";
 import ShowAllRowsToggle from "./shared/ShowAllRowsToggle";
 import Tooltip from "./shared/Tooltip";
 
@@ -37,8 +38,10 @@ export default function IncomeTable({ items, totalGrossIncome, onAdd, onRemove, 
 
       <div className="card">
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse">
-            <thead>
+          {/* Below 640px each row becomes two lines: the description and its delete
+              button, then the base toggle and the value field at full width. */}
+          <table className="w-full border-collapse max-sm:block">
+            <thead className="max-sm:hidden">
               <tr>
                 <th className="table-header">Rendimento</th>
                 <th className="table-header text-center w-28">Entra na base</th>
@@ -46,22 +49,19 @@ export default function IncomeTable({ items, totalGrossIncome, onAdd, onRemove, 
                 <th className="table-header w-12"></th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="max-sm:block">
               {visible.map((item) => (
-                <tr key={item.id} className="hover:bg-gray-50 transition-colors group border-b border-gray-100 last:border-0">
-                  <td className="table-cell">
-                    <div className="flex items-center">
-                      <input
-                        type="text"
-                        value={item.label}
-                        aria-label="Descrição do rendimento"
-                        onChange={(e) => onUpdate(item.id, "label", e.target.value)}
-                        className="flex-1 bg-transparent border-none focus:ring-0 p-0 text-primary font-medium text-sm"
-                      />
+                <tr
+                  key={item.id}
+                  className="hover:bg-gray-50 transition-colors group border-b border-gray-100 last:border-0 max-sm:grid max-sm:grid-cols-[7rem_1fr_auto] max-sm:items-center max-sm:gap-x-3 max-sm:gap-y-2 max-sm:px-4 max-sm:py-3"
+                >
+                  <td className="table-cell max-sm:row-start-1 max-sm:col-start-1 max-sm:col-span-2 max-sm:p-0 max-sm:border-0">
+                    <div className="flex items-start">
+                      <LabelField value={item.label} ariaLabel="Descrição do rendimento" onChange={(v) => onUpdate(item.id, "label", v)} />
                       <Tooltip text={item.description} />
                     </div>
                   </td>
-                  <td className="table-cell">
+                  <td className="table-cell max-sm:row-start-2 max-sm:col-start-1 max-sm:p-0 max-sm:border-0">
                     <button
                       onClick={() => onUpdate(item.id, "isSubject", !item.isSubject)}
                       aria-pressed={item.isSubject}
@@ -72,10 +72,11 @@ export default function IncomeTable({ items, totalGrossIncome, onAdd, onRemove, 
                           : "bg-white text-text-gray font-normal border-rule hover:bg-paper"
                       }`}
                     >
+                      <span className="sm:hidden">Na base: </span>
                       {item.isSubject ? "Sim" : "Não"}
                     </button>
                   </td>
-                  <td className="table-cell text-right">
+                  <td className="table-cell text-right max-sm:row-start-2 max-sm:col-start-2 max-sm:col-span-2 max-sm:p-0 max-sm:border-0">
                     <div className="flex items-center justify-end gap-2">
                       <span className="text-gray-500 text-xs font-semibold">R$</span>
                       <CurrencyInput
@@ -86,7 +87,7 @@ export default function IncomeTable({ items, totalGrossIncome, onAdd, onRemove, 
                       />
                     </div>
                   </td>
-                  <td className="table-cell text-center">
+                  <td className="table-cell text-center max-sm:row-start-1 max-sm:col-start-3 max-sm:p-0 max-sm:border-0">
                     <button
                       onClick={() => onRemove(item.id)}
                       aria-label={`Excluir linha ${item.label}`}
@@ -98,11 +99,13 @@ export default function IncomeTable({ items, totalGrossIncome, onAdd, onRemove, 
                 </tr>
               ))}
             </tbody>
-            <tfoot>
-              <tr className="table-total">
-                <td colSpan={2}>Total, sem lucros e dividendos</td>
-                <td className="text-right tabular-nums">{formatCurrency(totalGrossIncome)}</td>
-                <td></td>
+            <tfoot className="max-sm:block">
+              <tr className="table-total max-sm:flex max-sm:justify-between max-sm:gap-4 max-sm:border-t-[3px] max-sm:border-double max-sm:border-rule">
+                <td colSpan={2} className="max-sm:border-0">
+                  Total, sem lucros e dividendos
+                </td>
+                <td className="text-right tabular-nums max-sm:border-0">{formatCurrency(totalGrossIncome)}</td>
+                <td className="max-sm:hidden"></td>
               </tr>
             </tfoot>
           </table>

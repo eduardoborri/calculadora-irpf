@@ -19,10 +19,10 @@ export default function QuickIncrementButtons({
 }: QuickIncrementButtonsProps) {
   const multiplier = isAnnual ? 1 : ANNUAL_TO_MONTHLY;
   const buttonClass =
-    "text-xs font-semibold px-2.5 py-1 bg-gray-50 border border-gray-200 text-gray-600 rounded hover:bg-gray-100 transition-all cursor-pointer";
+    "text-xs font-semibold px-2.5 py-1 bg-white border border-rule text-primary rounded hover:bg-paper transition-colors cursor-pointer";
 
   return (
-    <div className="flex gap-2">
+    <div className="flex flex-wrap gap-2">
       {increments.map((base) => {
         const increment = Math.round(base * multiplier);
         return (

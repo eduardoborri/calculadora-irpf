@@ -1,5 +1,3 @@
-import { motion } from "motion/react";
-import { Download, FileText, Plus, Settings2, ShieldCheck, TrendingUp } from "lucide-react";
 import { SimulationResult } from "../types";
 import { formatCurrency, formatPercent } from "../utils/format";
 import CurrencyInput from "./shared/CurrencyInput";
@@ -32,6 +30,18 @@ interface SimulatorProps extends SimulatorState {
   onExportPdf: () => void;
 }
 
+interface ResultLine {
+  operator: string;
+  label: string;
+  value: string;
+  note?: string;
+  ruled?: boolean;
+}
+
+// Same language as the apuração: plain section headings over white panels on
+// the left, and the answer on the right as a running calculation in the
+// petróleo panel, pinned while the sliders move. On a phone the answer comes
+// first.
 export default function Simulator({
   simPeriod,
   simTaxableIncome,
@@ -60,431 +70,260 @@ export default function Simulator({
   const incomeStep = isAnnual ? 50000 : 5000;
   const dividendMax = isAnnual ? 100000000 : 8333333;
   const dividendStep = isAnnual ? 100000 : 10000;
+  const r = simResults;
+
+  const lines: ResultLine[] = [
+    { operator: "", label: "Base do IRPF mínimo", value: formatCurrency(r.minimumBase), note: "Rendimentos tributáveis, aplicações, atividade rural e dividendos posteriores a 2025." },
+    { operator: "×", label: "Alíquota mínima", value: formatPercent(r.minimumRate) },
+    { operator: "=", label: "IRPF mínimo exigido", value: formatCurrency(r.minimumTaxDue), ruled: true },
+    {
+      operator: "−",
+      label: "IRPF pela tabela progressiva",
+      value: formatCurrency(r.standardTaxDue),
+      note: `Tabela sobre ${formatCurrency(r.netBase)}, mais 15% das aplicações e 5,5% da atividade rural. Efetiva de ${formatPercent(
+        r.standardEffectiveRate / 100
+      )}.`,
+    },
+  ];
 
   return (
-    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="space-y-8">
-      {/* Description Card */}
-      <div className="card p-6 border-l-4 border-primary bg-primary/5 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+    <div className="space-y-10">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div className="space-y-1">
-          <h3 className="text-lg font-semibold text-primary flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-secondary" />
-            Simulador de Impacto por Alíquota IRPF
-          </h3>
-          <p className="text-sm text-text-gray font-medium">
-            Simule diferentes composições de rendimentos tributáveis e isentos para analisar instantaneamente as alíquotas efetivas e impactos sob a
-            legislação ordinária do IRPF frente ao IRPF Mínimo (GSGA-PR / Lei 15.270/2025).
+          <h2 className="section-title">Simulação por faixas de renda</h2>
+          <p className="text-sm text-text-gray max-w-[72ch]">
+            Compara o IRPF pela tabela progressiva com o IRPF mínimo da Lei nº 15.270/2025 para uma composição estimada de rendas.
           </p>
         </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => onPeriodChange("annual")}
-            className={`px-4 py-2 text-xs font-semibold rounded-lg transition-all border cursor-pointer ${
-              isAnnual ? "bg-primary text-white border-primary" : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
-            }`}
-          >
-            ANUAL (Exercício)
+        <div className="segmented self-start md:self-auto" role="group" aria-label="Período da simulação">
+          <button type="button" aria-pressed={isAnnual} onClick={() => onPeriodChange("annual")}>
+            Anual
           </button>
-          <button
-            onClick={() => onPeriodChange("monthly")}
-            className={`px-4 py-2 text-xs font-semibold rounded-lg transition-all border cursor-pointer ${
-              !isAnnual ? "bg-primary text-white border-primary" : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
-            }`}
-          >
-            MENSAL (Referência)
+          <button type="button" aria-pressed={!isAnnual} onClick={() => onPeriodChange("monthly")} title="Valores mensais, só como referência">
+            Mensal (referência)
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Parameter Controls - 5 Cols */}
-        <div className="lg:col-span-5 space-y-6">
-          <div className="card p-6 space-y-6 bg-white">
-            <div className="border-b border-gray-100 pb-3 flex items-center gap-2">
-              <Settings2 className="w-5 h-5 text-primary" />
-              <h3 className="font-semibold text-primary text-sm">Ajuste de rendimentos</h3>
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_380px] gap-10 items-start">
+        <aside className="lg:order-2 lg:sticky lg:top-6 bg-primary text-white rounded-lg p-6 space-y-5" aria-label="Resultado da simulação">
+          <h3 className="text-[21px] font-semibold leading-tight">Resultado da simulação</h3>
+
+          <ol className="space-y-2">
+            {lines.map((line) => (
+              <li key={line.label} className={line.ruled ? "border-t border-white/20 pt-2" : ""}>
+                <div className="grid grid-cols-[1.5rem_1fr_auto] items-baseline gap-2">
+                  <span className="text-xl text-white/60 text-center" aria-hidden="true">
+                    {line.operator}
+                  </span>
+                  <span className="text-sm text-white/85">{line.label}</span>
+                  <span className="text-base font-semibold tabular-nums">{line.value}</span>
+                </div>
+                {line.note && <p className="ml-8 mt-0.5 text-xs text-white/70 leading-relaxed">{line.note}</p>}
+              </li>
+            ))}
+          </ol>
+
+          <div className="border-t-[3px] border-double border-white/30 pt-4 grid grid-cols-[1.5rem_1fr] gap-2 items-baseline">
+            <span className="text-2xl text-white/60 text-center" aria-hidden="true">
+              =
+            </span>
+            <div>
+              <p className="text-sm text-white/85">IRPF-M adicional</p>
+              <p className="mt-1 text-[32px] leading-none font-semibold tabular-nums">{formatCurrency(r.additionalMinTax)}</p>
+              <p className="text-xs text-white/70 mt-2 leading-relaxed">
+                {r.additionalMinTax > 0
+                  ? `A tabela progressiva fica ${formatCurrency(r.additionalMinTax)} abaixo do mínimo exigido.`
+                  : `A tabela progressiva já supera o mínimo em ${formatCurrency(r.standardTaxDue - r.minimumTaxDue)}.`}{" "}
+                Imposto total de {formatCurrency(r.totalCombinedTax)}, efetiva de {formatPercent(r.finalEffectiveRate / 100)}.
+              </p>
             </div>
-
-            <SimSliderField
-              label="Rendimentos Tributados (Alíquota Progressiva)"
-              description="Provável base sob salários, pró-labore, consultorias e aluguéis. Sujeita à tabela progressiva ordinária e contemplada no IRPF Mínimo."
-              value={simTaxableIncome}
-              onChange={onTaxableIncomeChange}
-              max={incomeMax}
-              step={incomeStep}
-              quickIncrements={[10000, 50000, 100000]}
-              isAnnual={isAnnual}
-              withTopBorder={false}
-            />
-
-            <SimSliderField
-              label="Aplicações Financeiras (Tributado a 15%)"
-              description="Rendimentos de investimentos financeiros de renda fixa e fundos com IR retido sob alíquota definitiva de 15%. Contemplados no IRPF Mínimo."
-              value={simFinancialIncome}
-              onChange={onFinancialIncomeChange}
-              max={incomeMax}
-              step={incomeStep}
-              quickIncrements={[10000, 50000, 100000]}
-              isAnnual={isAnnual}
-            />
-
-            <SimSliderField
-              label="Atividade Rural (Tributado a 5,5%)"
-              description="Ganhos líquidos apurados da exploração pesqueira ou agropecuária rural. Alíquota padrão efetiva de 5,5%. Contemplados no IRPF Mínimo."
-              value={simRuralIncome}
-              onChange={onRuralIncomeChange}
-              max={incomeMax}
-              step={incomeStep}
-              quickIncrements={[10000, 50000, 100000]}
-              isAnnual={isAnnual}
-            />
-
-            <SimSliderField
-              label="Lucros e Dividendos Tributados (Retenção do IRPF mínimo, pós dez/2025)"
-              description="Dividendos deliberados após dezembro de 2025 sujeitos à retenção na fonte do IRPF Mínimo. Contemplados integralmente na base de cálculo do IRPF Mínimo."
-              value={simTaxedDividends}
-              onChange={onTaxedDividendsChange}
-              max={dividendMax}
-              step={dividendStep}
-              quickIncrements={[100000, 500000, 1000000]}
-              isAnnual={isAnnual}
-              accent="secondary"
-            />
-
-            <SimSliderField
-              label="Lucros e Dividendos Isentos (Pré-2026 ou < R$ 50 mil mensais)"
-              description="Rendimentos pré-2026 ou sem retenção por estarem abaixo de R$ 50 mil mensais. Totalmente isentos do IRPF ordinário e do IRPF Mínimo."
-              value={simExemptDividends}
-              onChange={onExemptDividendsChange}
-              max={dividendMax}
-              step={dividendStep}
-              quickIncrements={[100000, 500000, 1000000]}
-              isAnnual={isAnnual}
-              accent="secondary"
-            />
           </div>
 
-          {/* Deductions parameter Card */}
-          <div className="card p-6 space-y-6 bg-white">
-            <div className="border-b border-gray-100 pb-3 flex items-center gap-2">
-              <ShieldCheck className="w-5 h-5 text-secondary" />
-              <h3 className="font-semibold text-primary text-sm">Deduções Básicas (IRPF Comum)</h3>
-            </div>
+          <div className="space-y-2">
+            <button
+              type="button"
+              onClick={onApplySimulation}
+              className="w-full px-4 py-2.5 rounded bg-white text-primary text-sm font-semibold hover:bg-paper cursor-pointer"
+            >
+              Aplicar valores na apuração
+            </button>
+            <button
+              type="button"
+              onClick={onExportPdf}
+              className="w-full px-4 py-2.5 rounded border border-white/40 text-sm font-semibold hover:bg-white/10 cursor-pointer"
+            >
+              Exportar relatório em PDF
+            </button>
+          </div>
+        </aside>
 
-            <div className="grid grid-cols-2 gap-2 bg-gray-50 p-1.5 rounded-lg border border-gray-200">
-              <button
-                onClick={() => onDeductionModeChange("simplified")}
-                className={`py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
-                  simDeductionMode === "simplified" ? "bg-white text-primary font-semibold" : "text-gray-500 hover:text-gray-600"
-                }`}
-              >
-                Desconto Simplificado (20%)
-              </button>
-              <button
-                onClick={() => onDeductionModeChange("complete")}
-                className={`py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
-                  simDeductionMode === "complete" ? "bg-white text-primary font-semibold" : "text-gray-500 hover:text-gray-600"
-                }`}
-              >
-                Deduções Completas
-              </button>
+        <div className="lg:order-1 space-y-12 min-w-0">
+          <section className="space-y-3">
+            <h3 className="section-title">Rendimentos estimados</h3>
+            <div className="card px-6 divide-y divide-rule/60">
+              <SimSliderField
+                label="Rendimentos tributáveis (tabela progressiva)"
+                description="Salários, pró-labore, consultorias e aluguéis. Sujeitos à tabela progressiva e incluídos na base do IRPF mínimo."
+                value={simTaxableIncome}
+                onChange={onTaxableIncomeChange}
+                max={incomeMax}
+                step={incomeStep}
+                quickIncrements={[10000, 50000, 100000]}
+                isAnnual={isAnnual}
+              />
+              <SimSliderField
+                label="Aplicações financeiras (15% definitivo)"
+                description="Renda fixa e fundos com imposto retido à alíquota definitiva de 15%. Incluídas na base do IRPF mínimo."
+                value={simFinancialIncome}
+                onChange={onFinancialIncomeChange}
+                max={incomeMax}
+                step={incomeStep}
+                quickIncrements={[10000, 50000, 100000]}
+                isAnnual={isAnnual}
+              />
+              <SimSliderField
+                label="Atividade rural (5,5%)"
+                description="Resultado da exploração agropecuária ou pesqueira, à alíquota efetiva padrão de 5,5%. Incluída na base do IRPF mínimo."
+                value={simRuralIncome}
+                onChange={onRuralIncomeChange}
+                max={incomeMax}
+                step={incomeStep}
+                quickIncrements={[10000, 50000, 100000]}
+                isAnnual={isAnnual}
+              />
+              <SimSliderField
+                label="Dividendos posteriores a 2025"
+                description="Deliberados a partir de 2026, sujeitos à retenção na fonte e incluídos integralmente na base do IRPF mínimo."
+                value={simTaxedDividends}
+                onChange={onTaxedDividendsChange}
+                max={dividendMax}
+                step={dividendStep}
+                quickIncrements={[100000, 500000, 1000000]}
+                isAnnual={isAnnual}
+              />
+              <SimSliderField
+                label="Dividendos isentos"
+                description="Deliberados até 2025, ou abaixo de R$ 50 mil por mês e sem retenção. Fora do IRPF ordinário e do IRPF mínimo."
+                value={simExemptDividends}
+                onChange={onExemptDividendsChange}
+                max={dividendMax}
+                step={dividendStep}
+                quickIncrements={[100000, 500000, 1000000]}
+                isAnnual={isAnnual}
+              />
             </div>
+          </section>
 
-            {simDeductionMode === "simplified" ? (
-              <div className="p-4 bg-primary/5 border border-primary/15 rounded-lg space-y-2">
-                <span className="text-xs font-semibold text-primary">Regra de simplificação aplicada:</span>
-                <p className="text-xs text-text-gray leading-relaxed">
-                  {isAnnual
-                    ? "Desconto automático linear de 20% aplicável aos rendimentos, fixado e limitado ao teto anual federal máximo de R$ 16.754,34 na Declaração Simplificada."
-                    : "Desconto padrão mensal fixo no valor de R$ 564,80 para composição direta da renda mensal líquida."}
-                </p>
-                <div className="flex justify-between items-center text-xs pt-1 border-t border-primary/10">
-                  <span className="font-semibold text-text-gray">Dedução calculada:</span>
-                  <span className="font-semibold text-primary">{formatCurrency(simResults.deductionAmount)}</span>
-                </div>
+          <section className="space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <h3 className="section-title">Deduções da tabela progressiva</h3>
+              <div className="segmented self-start" role="group" aria-label="Modelo de dedução">
+                <button type="button" aria-pressed={simDeductionMode === "simplified"} onClick={() => onDeductionModeChange("simplified")}>
+                  Desconto simplificado
+                </button>
+                <button type="button" aria-pressed={simDeductionMode === "complete"} onClick={() => onDeductionModeChange("complete")}>
+                  Deduções completas
+                </button>
               </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="space-y-1">
-                  <div className="flex justify-between text-xs font-semibold text-primary">
-                    <span>Dependentes</span>
-                    <span>
-                      {simDependents} {simDependents === 1 ? "dependente" : "dependentes"}
+            </div>
+
+            <div className="card p-6 space-y-4">
+              {simDeductionMode === "simplified" ? (
+                <p className="text-sm text-text-gray leading-relaxed">
+                  {isAnnual
+                    ? "Desconto de 20% sobre os rendimentos tributáveis, limitado a R$ 16.754,34 na declaração simplificada."
+                    : "Desconto mensal fixo de R$ 564,80."}
+                </p>
+              ) : (
+                <>
+                  <label className="block space-y-2">
+                    <span className="flex justify-between text-sm font-semibold text-primary">
+                      <span>Dependentes</span>
+                      <span className="tabular-nums">{simDependents}</span>
                     </span>
-                  </div>
-                  <div className="flex items-center gap-3">
                     <input
                       type="range"
                       min={0}
                       max={10}
                       value={simDependents}
                       onChange={(e) => onDependentsChange(parseInt(e.target.value) || 0)}
-                      className="flex-1 accent-primary h-2 bg-gray-100 rounded-lg cursor-pointer"
+                      className="w-full accent-primary h-2 cursor-pointer"
                     />
-                  </div>
-                  <p className="text-xs text-text-gray">
-                    Desconto dedutível de {formatCurrency(isAnnual ? 2275.08 : 189.59)} por dependente registrado.
-                  </p>
-                </div>
+                    <span className="block text-xs text-text-gray">{formatCurrency(isAnnual ? 2275.08 : 189.59)} por dependente.</span>
+                  </label>
 
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold text-primary">Outras Deduções Estimadas (Educação, Saúde etc.)</label>
-                  <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg">
-                    <span className="text-gray-500 font-semibold text-xs">R$</span>
-                    <CurrencyInput
-                      value={simOtherDeductions}
-                      onChange={onOtherDeductionsChange}
-                      className="w-full bg-transparent border-none focus:ring-0 p-0 text-primary text-sm font-semibold"
-                    />
-                  </div>
-                </div>
-
-                <div className="p-3 bg-secondary/5 border border-secondary/15 rounded-lg flex justify-between items-center text-xs">
-                  <span className="font-semibold text-secondary">Abatimento Geral Total:</span>
-                  <span className="font-semibold text-secondary text-sm">{formatCurrency(simResults.deductionAmount)}</span>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Comparisons & Chart - 7 Cols */}
-        <div className="lg:col-span-7 space-y-6">
-          {/* Comparative highlight decks */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Standard Progressive card */}
-            <div className="card p-5 bg-white border border-gray-200 flex flex-col justify-between space-y-4">
-              <div className="space-y-1">
-                <span className="text-xs opacity-70 font-semibold text-primary">Análise IRPF</span>
-                <h4 className="text-sm font-semibold text-primary flex items-center gap-1.5">
-                  <FileText className="w-4 h-4 text-primary" />
-                  Tabela Ordinária Geral
-                </h4>
-              </div>
-
-              <div className="space-y-1">
-                <span className="text-xs text-text-gray font-medium">Base de cálculo líquida:</span>
-                <p className="text-base font-semibold text-primary">{formatCurrency(simResults.netBase)}</p>
-              </div>
-
-              <div className="pt-2 border-t border-gray-100 flex justify-between items-end">
-                <div className="space-y-1">
-                  <span className="text-xs text-text-gray block font-medium">Alíquota Efetiva:</span>
-                  <span className="text-xs font-semibold bg-primary/5 text-primary px-2 py-0.5 rounded">
-                    {formatPercent(simResults.standardEffectiveRate / 100)}
-                  </span>
-                </div>
-                <div className="text-right">
-                  <span className="text-xs text-text-gray block font-medium">Imposto de Renda:</span>
-                  <span className="text-lg font-semibold text-primary">{formatCurrency(simResults.standardTaxDue)}</span>
-                </div>
+                  <label className="block space-y-2">
+                    <span className="block text-sm font-semibold text-primary">Outras deduções estimadas (educação, saúde etc.)</span>
+                    <span className="flex items-center gap-2 px-3 py-2 bg-white border border-rule rounded">
+                      <span className="text-gray-500 font-semibold text-xs">R$</span>
+                      <CurrencyInput
+                        value={simOtherDeductions}
+                        onChange={onOtherDeductionsChange}
+                        ariaLabel="Outras deduções estimadas"
+                        className="w-full bg-transparent border-none focus:ring-0 p-0 text-primary text-sm font-semibold"
+                      />
+                    </span>
+                  </label>
+                </>
+              )}
+              <div className="flex justify-between items-baseline pt-3 border-t border-rule/60 text-sm">
+                <span className="text-text-gray">Dedução considerada</span>
+                <span className="font-semibold text-primary tabular-nums">{formatCurrency(r.deductionAmount)}</span>
               </div>
             </div>
+          </section>
 
-            {/* GSGA-PR Minimum card */}
-            <div className="card p-5 bg-white border border-secondary/25 flex flex-col justify-between space-y-4">
-              <div className="space-y-1">
-                <span className="text-xs opacity-70 font-semibold text-secondary">REGRA MINÍMA LEGAL</span>
-                <h4 className="text-sm font-semibold text-secondary flex items-center gap-1.5">
-                  <TrendingUp className="w-4 h-4 text-secondary" />
-                  IRPF Mínimo (GSGA-PR)
-                </h4>
-              </div>
-
-              <div className="space-y-1">
-                <span className="text-xs text-text-gray font-medium">Base de cálculo global:</span>
-                <p className="text-base font-semibold text-secondary">{formatCurrency(simResults.minimumBase)}</p>
-              </div>
-
-              <div className="pt-2 border-t border-gray-100 flex justify-between items-end">
-                <div className="space-y-1">
-                  <span className="text-xs text-text-gray block font-medium">Piso Legal Efetivo:</span>
-                  <span className="text-xs font-semibold bg-secondary/5 text-secondary px-2 py-0.5 rounded">
-                    {formatPercent(simResults.minimumRate)}
-                  </span>
-                </div>
-                <div className="text-right">
-                  <span className="text-xs text-text-gray block font-medium">Exigência Mínima:</span>
-                  <span className="text-lg font-semibold text-secondary">{formatCurrency(simResults.minimumTaxDue)}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Conclusion compare card */}
-          <div
-            className={`p-6 rounded-lg border ${
-              simResults.additionalMinTax > 0 ? "bg-accent text-white border-accent/15" : "bg-secondary text-white border-secondary/40"
-            }`}
-          >
-            <div className="flex items-start gap-4">
-              <div className="bg-white/10 p-2.5 rounded-lg">
-                {simResults.additionalMinTax > 0 ? <TrendingUp className="w-6 h-6 text-white" /> : <ShieldCheck className="w-6 h-6 text-white" />}
-              </div>
-              <div className="space-y-2 flex-1">
-                <div className="flex justify-between items-baseline">
-                  <span className="text-xs font-semibold opacity-85 text-white">Análise de Diferencial Obrigatório</span>
-                  <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-white/20 text-white">
-                    {simResults.additionalMinTax > 0 ? "IRPF-M apurado" : "Cumprimento Concluído"}
-                  </span>
-                </div>
-
-                {simResults.additionalMinTax > 0 ? (
-                  <div className="space-y-1">
-                    <p className="text-2xl font-semibold text-white">IRPF-M de {formatCurrency(simResults.additionalMinTax)}</p>
-                    <p className="text-xs leading-relaxed opacity-90 text-white font-medium">
-                      O imposto devido pelas regras ordinárias e deduções do IRPF ({formatCurrency(simResults.standardTaxDue)}) não é suficiente para
-                      atingir o piso mínimo exigido ({formatCurrency(simResults.minimumTaxDue)}). É gerado um adendo obrigatório para regularização da
-                      diferença.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-1">
-                    <p className="text-xl font-semibold text-white">Sem IRPF-M apurado</p>
-                    <p className="text-xs leading-relaxed opacity-90 text-white font-medium">
-                      Sua contribuição ordinária no IRPF progressivo ({formatCurrency(simResults.standardTaxDue)}) já atende ou supera plenamente a cota
-                      mínima legal de {formatPercent(simResults.minimumRate)} decretada ({formatCurrency(simResults.minimumTaxDue)}). Nenhum imposto extra
-                      se aplica.
-                    </p>
-                  </div>
-                )}
-
-                <div className="pt-3 border-t border-white/15 flex justify-between items-center text-xs font-semibold text-white">
-                  <span>imposto combinado consolidado:</span>
-                  <span>
-                    {formatCurrency(simResults.totalCombinedTax)} (Efetivo: {formatPercent(simResults.finalEffectiveRate / 100)})
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="pt-2">
-            <button
-              type="button"
-              onClick={onExportPdf}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-primary hover:bg-primary/95 text-white text-xs font-semibold rounded-lg transition-all cursor-pointer"
-            >
-              <Download className="w-4 h-4 text-white" />
-              Salvar Relatório PDF Simplificado
-            </button>
-          </div>
-
-          {/* Progress gauge visualizer */}
-          <div className="card p-6 space-y-4 bg-white">
-            <div className="flex justify-between items-center text-xs font-semibold text-primary">
-              <span>Enquadramento nas Alíquotas Progressivas (IRPF Geral)</span>
-              <span className="text-xs text-text-gray font-medium">Base Deduzida: {formatCurrency(simResults.netBase)}</span>
-            </div>
-
-            <div className="relative w-full h-4 bg-gray-100 rounded-full overflow-hidden border border-gray-200 flex">
-              {simResults.brackets.map((br, index) => {
-                const previousLimit = index === 0 ? 0 : simResults.brackets[index - 1].limit;
-                const limit = br.limit === Infinity ? simResults.brackets[3].limit * 1.8 : br.limit;
-                const bracketWidth = limit - previousLimit;
-                const totalSpan = simResults.brackets[3].limit * 1.8;
-                const percentWidth = (bracketWidth / totalSpan) * 100;
-
-                let activePercentage = 0;
-                if (simResults.netBase > previousLimit) {
-                  const completedInBracket = Math.min(simResults.netBase - previousLimit, bracketWidth);
-                  activePercentage = (completedInBracket / bracketWidth) * 100;
-                }
-
-                return (
-                  <div key={br.id} className="relative h-full flex" style={{ width: `${percentWidth}%` }}>
-                    <div
-                      className={`absolute inset-0 border-r border-white/20 ${
-                        index === simResults.activeBracketIndex ? "bg-primary/5" : "bg-gray-200/45"
-                      }`}
-                    />
-                    {activePercentage > 0 && <div className="absolute inset-y-0 left-0 bg-primary/75" style={{ width: `${activePercentage}%` }} />}
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="grid grid-cols-5 gap-1.5 text-center leading-none">
-              {simResults.brackets.map((br, index) => (
-                <div
-                  key={br.id}
-                  className={`p-2 rounded transition-all ${
-                    index === simResults.activeBracketIndex ? "bg-primary text-white scale-102 font-semibold" : "bg-gray-50 text-gray-500 text-xs"
-                  }`}
-                >
-                  <div className=" opacity-75 text-xs mb-0.5 select-none font-semibold">Faixa {index + 1}</div>
-                  <div className="text-xs font-semibold">{br.label}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Precise bracket list with highlighted active state */}
-          <div className="card p-6 space-y-4 bg-white">
-            <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
-              <FileText className="w-4.5 h-4.5 text-primary" />
-              <h4 className="font-semibold text-primary text-xs">
-                Tabela Progressiva Oficial RFB ({isAnnual ? "Tabela Anual de Ajuste" : "Tabela Mensal de Retenção"})
-              </h4>
-            </div>
-
-            <div className="overflow-x-auto rounded-lg border border-gray-100">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="bg-gray-50 border-b border-gray-200">
-                    <th className="p-2.5 text-primary font-semibold">Faixa</th>
-                    <th className="p-2.5 text-primary font-semibold">Percentuais e Limites de Cálculo (R$)</th>
-                    <th className="p-2.5 text-primary font-semibold text-center">Alíquota</th>
-                    <th className="p-2.5 text-primary font-semibold text-right">Parcela a Deduzir</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {simResults.brackets.map((br, index) => {
-                    const previousLimit = index === 0 ? 0 : simResults.brackets[index - 1].limit;
-                    const isActive = index === simResults.activeBracketIndex;
-                    return (
-                      <tr
-                        key={br.id}
-                        className={`border-b border-gray-100 last:border-0 transition-all ${
-                          isActive ? "bg-primary/5 font-semibold text-primary border-l-4 border-l-primary" : "text-text-gray"
-                        }`}
-                      >
-                        <td className="p-2.5">Faixa {index + 1}</td>
-                        <td className="p-2.5">
-                          {index === 0
-                            ? `Até ${formatCurrency(br.limit)}`
-                            : br.limit === Infinity
-                            ? `Acima de ${formatCurrency(previousLimit)}`
-                            : `De ${formatCurrency(previousLimit + 0.01)} a ${formatCurrency(br.limit)}`}
-                        </td>
-                        <td className="p-2.5 text-center">
-                          <span className={`px-2.5 py-0.5 rounded text-xs font-semibold ${isActive ? "bg-primary text-white" : "bg-gray-100 text-gray-600"}`}>
-                            {br.rate === 0 ? "Isento" : formatPercent(br.rate)}
-                          </span>
-                        </td>
-                        <td className="p-2.5 text-right font-mono text-xs">{br.deduction === 0 ? "—" : formatCurrency(br.deduction)}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="pt-3 flex items-center justify-between gap-4 flex-wrap">
-              <p className="text-xs text-text-gray font-medium leading-relaxed max-w-sm">
-                * Alíquotas e deduções conforme legislação vigente. O desconto simplificado é deduzido antes do enquadramento.
+          <section className="space-y-3">
+            <div className="space-y-1">
+              <h3 className="section-title">Tabela progressiva</h3>
+              <p className="text-sm text-text-gray">
+                {isAnnual ? "Tabela anual de ajuste" : "Tabela mensal"} da Receita Federal. Base após deduções de {formatCurrency(r.netBase)}, na faixa{" "}
+                {r.activeBracketIndex + 1}.
               </p>
-
-              <button
-                onClick={onApplySimulation}
-                className="flex items-center gap-1.5 px-4 py-2.5 bg-primary hover:bg-primary/95 text-white font-semibold rounded-lg transition-all text-xs cursor-pointer"
-              >
-                <Plus className="w-4 h-4 text-white" />
-                Aplicar Valores na Apuração
-              </button>
             </div>
-          </div>
+            <div className="card">
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr>
+                      <th className="table-header">Faixa</th>
+                      <th className="table-header">Base de cálculo</th>
+                      <th className="table-header text-right">Alíquota</th>
+                      <th className="table-header text-right">Parcela a deduzir</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {r.brackets.map((br, index) => {
+                      const previousLimit = index === 0 ? 0 : r.brackets[index - 1].limit;
+                      const isActive = index === r.activeBracketIndex;
+                      return (
+                        <tr
+                          key={br.id}
+                          aria-current={isActive ? "true" : undefined}
+                          className={isActive ? "bg-secondary/10 font-semibold text-primary" : "text-ink"}
+                        >
+                          <td className="table-cell whitespace-nowrap">{index + 1}</td>
+                          <td className="table-cell">
+                            {index === 0
+                              ? `Até ${formatCurrency(br.limit)}`
+                              : br.limit === Infinity
+                                ? `Acima de ${formatCurrency(previousLimit)}`
+                                : `De ${formatCurrency(previousLimit + 0.01)} a ${formatCurrency(br.limit)}`}
+                          </td>
+                          <td className="table-cell text-right tabular-nums">{br.rate === 0 ? "Isento" : formatPercent(br.rate)}</td>
+                          <td className="table-cell text-right tabular-nums">{br.deduction === 0 ? "—" : formatCurrency(br.deduction)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <p className="text-xs text-text-gray">Alíquotas e deduções conforme a legislação vigente. O desconto é aplicado antes do enquadramento.</p>
+          </section>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }

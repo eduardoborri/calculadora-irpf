@@ -10,43 +10,28 @@ interface SimSliderFieldProps {
   step: number;
   quickIncrements: number[];
   isAnnual: boolean;
-  accent?: "primary" | "secondary";
-  withTopBorder?: boolean;
 }
 
-export default function SimSliderField({
-  label,
-  description,
-  value,
-  onChange,
-  max,
-  step,
-  quickIncrements,
-  isAnnual,
-  accent = "primary",
-  withTopBorder = true,
-}: SimSliderFieldProps) {
-  const badgeClass = accent === "primary" ? "text-primary bg-primary/5" : "text-secondary bg-secondary/5";
-  const sliderAccentClass = accent === "primary" ? "accent-primary" : "accent-secondary";
-
+// One estimated income: label and amount on one line, what it covers below,
+// then the slider and the quick increments. Rows are divided by the parent.
+export default function SimSliderField({ label, description, value, onChange, max, step, quickIncrements, isAnnual }: SimSliderFieldProps) {
   return (
-    <div className={`space-y-3 ${withTopBorder ? "pt-4 border-t border-gray-200" : ""}`}>
-      <div className="flex justify-between items-center text-sm">
+    <div className="space-y-2 py-5">
+      <div className="flex justify-between items-baseline gap-4 text-sm">
         <label className="font-semibold text-primary">{label}</label>
-        <span className={`font-semibold px-2.5 py-1 rounded-lg ${badgeClass}`}>{formatCurrency(value)}</span>
+        <span className="font-semibold text-primary tabular-nums whitespace-nowrap">{formatCurrency(value)}</span>
       </div>
       <p className="text-xs text-text-gray leading-normal">{description}</p>
-      <div className="flex items-center gap-4">
-        <input
-          type="range"
-          min={0}
-          max={max}
-          step={step}
-          value={value}
-          onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
-          className={`flex-1 ${sliderAccentClass} h-2 bg-gray-100 rounded-lg cursor-pointer`}
-        />
-      </div>
+      <input
+        type="range"
+        min={0}
+        max={max}
+        step={step}
+        value={value}
+        aria-label={label}
+        onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
+        className="w-full accent-primary h-2 cursor-pointer"
+      />
       <QuickIncrementButtons value={value} onChange={onChange} max={max} increments={quickIncrements} isAnnual={isAnnual} />
     </div>
   );
