@@ -278,8 +278,7 @@ export default function Simulator({
             <div className="space-y-1">
               <h3 className="section-title">Tabela progressiva</h3>
               <p className="text-sm text-text-gray">
-                {isAnnual ? "Tabela anual de ajuste" : "Tabela mensal"} – ano-calendário 2026. Base de cálculo, após deduções:{" "}
-                {formatCurrency(r.netBase)} (faixa {r.activeBracketIndex + 1}).
+                {isAnnual ? "Tabela anual de ajuste" : "Tabela mensal"} – ano-calendário 2026.
               </p>
             </div>
             <div className="card">
@@ -320,7 +319,7 @@ export default function Simulator({
                 </table>
               </div>
             </div>
-            <p className="text-xs text-text-gray">Alíquotas e parcelas a deduzir conforme a legislação vigente para o ano-calendário 2026. As deduções legais, ou o desconto simplificado, são abatidas dos rendimentos tributáveis antes do enquadramento na faixa.</p>
+            <p className="text-xs text-text-gray">Alíquotas e parcelas a deduzir conforme a legislação vigente para o ano-calendário 2026.</p>
           </section>
         </div>
       </div>
