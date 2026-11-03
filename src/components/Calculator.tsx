@@ -64,11 +64,12 @@ export default function Calculator() {
     const isAnnual = simPeriod === "annual";
     const brackets = isAnnual
       ? [
-          { id: 1, limit: 27110.4, rate: 0.0, deduction: 0.0, label: "Isento" },
-          { id: 2, limit: 33919.8, rate: 0.075, deduction: 2033.28, label: "7,5%" },
-          { id: 3, limit: 45012.6, rate: 0.15, deduction: 4577.28, label: "15,0%" },
-          { id: 4, limit: 55976.16, rate: 0.225, deduction: 7953.24, label: "22,5%" },
-          { id: 5, limit: Infinity, rate: 0.275, deduction: 10752.0, label: "27,5%" },
+          // Annual adjustment table, ano-calendário 2026.
+          { id: 1, limit: 29145.6, rate: 0.0, deduction: 0.0, label: "Isento" },
+          { id: 2, limit: 33919.8, rate: 0.075, deduction: 2185.92, label: "7,5%" },
+          { id: 3, limit: 45012.6, rate: 0.15, deduction: 4729.91, label: "15,0%" },
+          { id: 4, limit: 55976.16, rate: 0.225, deduction: 8105.85, label: "22,5%" },
+          { id: 5, limit: Infinity, rate: 0.275, deduction: 10904.66, label: "27,5%" },
         ]
       : [
           { id: 1, limit: 2259.2, rate: 0.0, deduction: 0.0, label: "Isento" },
