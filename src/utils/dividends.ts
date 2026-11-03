@@ -9,6 +9,12 @@ import { DividendSource, DividendSourceResult, DividendSummary } from "../types"
 
 export const posteriorOf = (source: DividendSource) => Math.max(0, source.total - source.protectedAmount);
 
+// Default withholding on a source: the standard rate on its posterior part.
+export const defaultWithholdingOf = (source: DividendSource) => round2(posteriorOf(source) * DIVIDEND_WITHHOLDING_RATE);
+
+export const withholdingOf = (source: DividendSource) =>
+  !source.withholding ? 0 : source.withholdingAmount ?? defaultWithholdingOf(source);
+
 export function newDividendSource(partial: Partial<DividendSource> = {}): DividendSource {
   return {
     id: crypto.randomUUID(),
@@ -20,6 +26,7 @@ export function newDividendSource(partial: Partial<DividendSource> = {}): Divide
     pjTax: 0,
     nominalRate: DEFAULT_PJ_NOMINAL_RATE,
     withholding: false,
+    withholdingAmount: null,
     isSimples: false,
     isAggregate: false,
     note: DEFAULT_ALLOCATION_NOTE,
@@ -94,7 +101,7 @@ export function summarizeDividends(sources: DividendSource[], minimumAliquot: nu
       effectiveRate,
       redutorRate,
       redutor: posterior * redutorRate,
-      withholdingTax: source.withholding ? posterior * DIVIDEND_WITHHOLDING_RATE : 0,
+      withholdingTax: withholdingOf(source),
       missingPjData: posterior > 0 && !source.isAggregate && !hasPjData,
     };
   });

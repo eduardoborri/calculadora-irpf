@@ -81,7 +81,7 @@ export default function CalculationMemo({ results, incomeItems, taxItems, divide
       detail: [
         ...taxItems.filter((t) => t.value !== 0).map((t) => ({ label: t.label, value: formatCurrency(t.value) })),
         ...(presumedExclusiveTax > 0 ? [{ label: "Presumido: 15% sobre a tributação exclusiva", value: formatCurrency(presumedExclusiveTax) }] : []),
-        ...(dividends.withholdingTotal > 0 ? [{ label: "Retenção de 10% sobre dividendos", value: formatCurrency(dividends.withholdingTotal) }] : []),
+        ...(dividends.withholdingTotal > 0 ? [{ label: "Retenção na fonte sobre dividendos", value: formatCurrency(dividends.withholdingTotal) }] : []),
       ],
       note: "O imposto devido na declaração anual não entra, para não contar o mesmo imposto duas vezes.",
     },

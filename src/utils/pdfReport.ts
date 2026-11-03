@@ -471,7 +471,7 @@ function detailedPages(r: Report, p: GeneratePdfReportParams, eyebrow: string, i
   r.y += 8;
   const taxRows: Row[] = p.taxItems.filter((t) => t.value !== 0 && t.id !== DAA_TAX_ID).map((t) => ({ cells: [t.label, brl(t.value)] }));
   if (res.presumedExclusiveTax > 0) taxRows.push({ cells: ["Imposto presumido sobre a tributação exclusiva (15%)", brl(res.presumedExclusiveTax)] });
-  if (div.withholdingTotal > 0) taxRows.push({ cells: ["Retenção de 10% sobre lucros e dividendos", brl(div.withholdingTotal)] });
+  if (div.withholdingTotal > 0) taxRows.push({ cells: ["Retenção na fonte sobre lucros e dividendos", brl(div.withholdingTotal)] });
   taxRows.push({ cells: ["Imposto pago ou retido considerado", brl(res.totalTaxPaid)], kind: "total" });
   r.table([{ label: "Imposto pago ou retido", width: WIDTH - 180 }, { label: "Valor", width: 180 }], taxRows);
   r.footnote("Valores em R$. O imposto devido na declaração de ajuste anual não é somado ao imposto pago, para que o mesmo imposto não seja considerado duas vezes.");

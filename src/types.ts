@@ -21,6 +21,9 @@ export interface DividendSource {
   pjTax: number;
   nominalRate: number;
   withholding: boolean;
+  // Amount withheld, when it differs from the default rate on the posterior
+  // part (DIVIDEND_WITHHOLDING_RATE). Null means "use the default".
+  withholdingAmount: number | null;
   isSimples: boolean;
   // Aggregated row of small sources (below SMALL_SOURCE_THRESHOLD each): no
   // PJ data, no redutor.

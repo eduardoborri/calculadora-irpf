@@ -94,8 +94,8 @@ export default function TaxTable({ items, totalTaxPaid, presumedExclusiveTax, di
               {dividendWithholding > 0 && (
                 <tr className="max-sm:flex max-sm:flex-col max-sm:gap-2 max-sm:px-4 max-sm:py-3">
                   <td className="table-cell text-sm text-primary font-medium max-sm:p-0 max-sm:border-0">
-                    Retenção de 10% sobre dividendos posteriores a 2025
-                    <p className="text-xs text-text-gray">Calculada na tabela de fontes pagadoras, nas fontes marcadas com retenção.</p>
+                    Retenção na fonte sobre dividendos posteriores a 2025
+                    <p className="text-xs text-text-gray">Calculada na tabela de fontes pagadoras, nas fontes marcadas com retenção (10% da parcela posterior ou o valor informado).</p>
                   </td>
                   <td className="table-cell text-right text-primary font-semibold tabular-nums max-sm:p-0 max-sm:border-0">
                     {formatCurrency(dividendWithholding)}

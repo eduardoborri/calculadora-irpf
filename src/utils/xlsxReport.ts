@@ -202,7 +202,7 @@ function buildSheet(ws: Sheet, p: GenerateXlsxParams) {
     ["P6", 'Limite para agrupar fontes em "Demais fontes"', SMALL_SOURCE_THRESHOLD, MONEY,
       "Fontes que pagaram menos que isto cada uma são agrupadas numa única linha, sem redutor. Regra da ferramenta (informativa)."],
     ["P7", "Alíquota da retenção na fonte sobre dividendos posteriores a 2025", DIVIDEND_WITHHOLDING_RATE, PCT,
-      "Aplicada à parcela posterior das fontes marcadas com retenção = Sim (coluna L)."],
+      "Aplicada à parcela posterior das fontes marcadas com retenção = Sim (coluna L), salvo quando o valor retido foi informado na coluna M."],
   ];
   for (const [ref, label, value, fmt, why] of premises) {
     R[ref] = row;
@@ -221,7 +221,7 @@ function buildSheet(ws: Sheet, p: GenerateXlsxParams) {
     ["Q2", "Lucros e dividendos deliberados até 31/12/2025 não integram a base; informe a parcela protegida na coluna D da tabela de fontes. " +
       "A falta de documentação sobre a deliberação é uma limitação da análise, e não prova de que a deliberação ocorreu após 2025."],
     ["Q3", "Crédito contra o IRPF mínimo = imposto retido ou recolhido no ano + imposto sobre a tributação exclusiva (informado ou presumido " +
-      "pela P4) + retenção de 10% sobre dividendos (fontes marcadas). O imposto devido na declaração de ajuste anual não é somado, para evitar dupla contagem."],
+      "pela P4) + retenção na fonte sobre dividendos (fontes marcadas). O imposto devido na declaração de ajuste anual não é somado, para evitar dupla contagem."],
     ["Q4", "Redutor do art. 16-B, fonte a fonte = parcela posterior × máx(0; alíquota efetiva da PJ + alíquota do IRPF mínimo − alíquota nominal da PJ), " +
       "limitado ao saldo devido. Fonte sem dados da PJ ou agrupada em \"Demais fontes\" não gera redutor. A aplicação depende de dados das fontes " +
       "pagadoras, e ainda não foi esclarecido como essas informações constarão da DIRPF 2027 (ano-calendário 2026)."],
@@ -292,7 +292,7 @@ function buildSheet(ws: Sheet, p: GenerateXlsxParams) {
   header([
     [1, "Ref."], [2, "Fonte pagadora (nome – CNPJ)"], [3, "Total recebido (R$)"], [4, "Deliberado até 2025 – protegido (R$)"],
     [5, "Posterior a 2025 – sujeito (R$)"], [6, "Lucro contábil da PJ antes de IRPJ/CSLL (R$)"], [7, "IRPJ + CSLL devidos (R$)"],
-    [8, "Alíq. nominal"], [9, "Alíq. efetiva"], [10, "% redutor"], [11, "Redutor (R$)"], [12, "Retenção 10%?"],
+    [8, "Alíq. nominal"], [9, "Alíq. efetiva"], [10, "% redutor"], [11, "Redutor (R$)"], [12, "Retenção na fonte?"],
     [13, "Retenção (R$)"], [14, "Observação"],
   ]);
   const firstSrc = row;
@@ -322,8 +322,11 @@ function buildSheet(ws: Sheet, p: GenerateXlsxParams) {
     put(r, 11, f(`E${r}*J${r}`), { fmt: MONEY, align: "right" });
     put(r, 12, s?.withholding ? 1 : 0, { color: BLUE, fill: YELLOW, fmt: FLAG, align: "center" });
     ws.getCell(r, 12).dataValidation = { type: "list", allowBlank: false, formulae: ['"0,1"'] };
-    put(r, 13, f(`E${r}*L${r}*${A("P7")}`), { fmt: MONEY, align: "right" });
-    const note = s ? s.note ?? "" : "Linha livre para nova fonte.";
+    // Withheld amount: the default rate on the posterior part, or the amount informed in the tool.
+    const informed = !!s?.withholding && s.withholdingAmount !== null;
+    if (informed) put(r, 13, s!.withholdingAmount, { color: BLUE, fill: YELLOW, fmt: MONEY, align: "right" });
+    else put(r, 13, f(`ROUND(E${r}*L${r}*${A("P7")},2)`), { fmt: MONEY, align: "right" });
+    const note = s ? (informed ? "Retenção informada manualmente (difere de 10% da parcela posterior). " : "") + (s.note ?? "") : "Linha livre para nova fonte.";
     put(r, 14, note, { size: 9, color: MUTED, wrap: true });
     finish(s && note.length > 120 ? 42 : s ? 30 : undefined);
   };
@@ -409,7 +412,7 @@ function buildSheet(ws: Sheet, p: GenerateXlsxParams) {
   calc("C8", "Imposto presumido sobre a tributação exclusiva",
     exclusiveIncomeKey ? f(`IF(AND(${C("C7")}=0,$D$${R[exclusiveIncomeKey]}=1),${A(exclusiveIncomeKey)}*${A("P4")},0)`) : 0,
     exclusiveIncomeKey ? `Se C7 = 0 e ${LBL[exclusiveIncomeKey]} entra na base: ${LBL[exclusiveIncomeKey]} × P4.` : "Sem rendimentos de tributação exclusiva.");
-  calc("C9", "Retenção de 10% sobre dividendos posteriores (fontes marcadas)", f(`M${T}`), "Total da coluna M da tabela de fontes.");
+  calc("C9", "Retenção na fonte sobre dividendos posteriores (fontes marcadas)", f(`M${T}`), "Total da coluna M da tabela de fontes.");
   calc("C10", "Total de imposto já pago / considerado", f(`SUM(${C("C6")}:${C("C9")})`), "C6 + C7 + C8 + C9.", MONEY, "total");
   calc("C11", "Saldo devido antes do redutor", f(`MAX(0,${C("C5")}-${C("C10")})`), "máx(0; C5 − C10).");
 

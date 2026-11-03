@@ -1,7 +1,8 @@
 import { Fragment, useState } from "react";
-import { AlertTriangle, ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
+import { AlertTriangle, ChevronDown, ChevronRight, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { PJ_NOMINAL_RATES } from "../constants";
 import { DividendSource, DividendSummary } from "../types";
+import { defaultWithholdingOf } from "../utils/dividends";
 import { formatCurrency, formatPercent } from "../utils/format";
 import CurrencyInput from "./shared/CurrencyInput";
 
@@ -39,12 +40,13 @@ export default function DividendSourcesTable({ sources, summary, onAdd, onRemove
 
       <p className="text-sm text-text-gray leading-relaxed max-w-[72ch]">
         Só a parcela posterior a 2025 entra na base, gera retenção e redutor do art. 16-B. Por padrão, tudo é tratado como posterior: informe na
-        coluna amarela o que foi deliberado até 31/12/2025. Abra a linha para informar os dados da PJ.
+        coluna amarela o que foi deliberado até 31/12/2025. Abra a linha para informar os dados da PJ. Ao marcar a retenção, o valor sugerido é 10%
+        da parcela posterior; altere-o se o valor efetivamente retido for outro.
       </p>
 
       <div className="card">
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse min-w-[920px]">
+          <table className="w-full border-collapse min-w-[1000px]">
             <thead>
               <tr>
                 <th className="table-header w-8"></th>
@@ -53,7 +55,7 @@ export default function DividendSourcesTable({ sources, summary, onAdd, onRemove
                 <th className="table-header text-right w-36">Deliberado até 2025</th>
                 <th className="table-header text-right w-36">Posterior (sujeito)</th>
                 <th className="table-header text-right w-32">Redutor</th>
-                <th className="table-header text-center w-24">Retenção 10%</th>
+                <th className="table-header text-right w-44">Retenção na fonte</th>
                 <th className="table-header w-10"></th>
               </tr>
             </thead>
@@ -131,15 +133,47 @@ export default function DividendSourcesTable({ sources, summary, onAdd, onRemove
                       </td>
                       <td className="table-cell text-right text-sm font-semibold text-primary">{formatCurrency(r?.posterior ?? 0)}</td>
                       <td className="table-cell text-right text-sm font-semibold text-secondary">{r && r.redutor > 0 ? formatCurrency(r.redutor) : "—"}</td>
-                      <td className="table-cell text-center">
-                        <input
-                          type="checkbox"
-                          checked={source.withholding}
-                          onChange={(e) => onUpdate(source.id, "withholding", e.target.checked)}
-                          aria-label={`Retenção de 10% na fonte para ${source.name}`}
-                          className="w-4 h-4 accent-primary"
-                          title="Marque se os pagamentos desta fonte superam R$ 50 mil no mês (retenção de 10% sobre a parcela posterior)"
-                        />
+                      <td className={`table-cell ${source.withholding ? "bg-yellow-50" : ""}`}>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={source.withholding}
+                            onChange={(e) => onUpdate(source.id, "withholding", e.target.checked)}
+                            aria-label={`Retenção na fonte para ${source.name}`}
+                            className="w-4 h-4 accent-primary shrink-0"
+                            title="Marque se houve retenção na fonte (pagamentos acima de R$ 50 mil no mês). O valor sugerido é 10% da parcela posterior."
+                          />
+                          {source.withholding ? (
+                            <>
+                              <CurrencyInput
+                                value={r?.withholdingTax ?? 0}
+                                onChange={(v) => {
+                                  // Typing the default back (or leaving the field untouched) keeps it automatic.
+                                  if (v !== defaultWithholdingOf(source)) onUpdate(source.id, "withholdingAmount", v);
+                                  else if (source.withholdingAmount !== null) onUpdate(source.id, "withholdingAmount", null);
+                                }}
+                                ariaLabel={`Valor retido na fonte de ${source.name}`}
+                                className={cellInput}
+                              />
+                              {source.withholdingAmount !== null ? (
+                                <button
+                                  onClick={() => onUpdate(source.id, "withholdingAmount", null)}
+                                  title="Valor informado manualmente. Clique para voltar a 10% da parcela posterior."
+                                  aria-label={`Voltar a retenção de ${source.name} para 10%`}
+                                  className="p-0.5 rounded text-secondary hover:bg-paper cursor-pointer shrink-0"
+                                >
+                                  <RotateCcw className="w-3.5 h-3.5" />
+                                </button>
+                              ) : (
+                                <span className="text-[10px] font-semibold text-gray-500 shrink-0" title="10% da parcela posterior">
+                                  10%
+                                </span>
+                              )}
+                            </>
+                          ) : (
+                            <span className="text-xs text-gray-400">sem retenção</span>
+                          )}
+                        </div>
                       </td>
                       <td className="table-cell text-center">
                         <button
