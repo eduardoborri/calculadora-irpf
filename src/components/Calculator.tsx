@@ -72,20 +72,22 @@ export default function Calculator() {
           { id: 5, limit: Infinity, rate: 0.275, deduction: 10904.66, label: "27,5%" },
         ]
       : [
-          { id: 1, limit: 2259.2, rate: 0.0, deduction: 0.0, label: "Isento" },
-          { id: 2, limit: 2826.65, rate: 0.075, deduction: 169.44, label: "7,5%" },
-          { id: 3, limit: 3751.05, rate: 0.15, deduction: 381.44, label: "15,0%" },
-          { id: 4, limit: 4664.68, rate: 0.225, deduction: 662.77, label: "22,5%" },
-          { id: 5, limit: Infinity, rate: 0.275, deduction: 896.0, label: "27,5%" },
+          // Monthly table since May 2025 (Lei 11.482/2007, art. 1º, XII), in force in 2026.
+          { id: 1, limit: 2428.8, rate: 0.0, deduction: 0.0, label: "Isento" },
+          { id: 2, limit: 2826.65, rate: 0.075, deduction: 182.16, label: "7,5%" },
+          { id: 3, limit: 3751.05, rate: 0.15, deduction: 394.16, label: "15,0%" },
+          { id: 4, limit: 4664.68, rate: 0.225, deduction: 675.49, label: "22,5%" },
+          { id: 5, limit: Infinity, rate: 0.275, deduction: 908.73, label: "27,5%" },
         ];
 
     // Compute basic deduction
     let deductionAmount = 0;
     if (simDeductionMode === "simplified") {
       if (isAnnual) {
-        deductionAmount = Math.min(simTaxableIncome * 0.2, 16754.34);
+        // Annual cap from ano-calendário 2026 (Lei 9.250/1995, art. 10, X).
+        deductionAmount = Math.min(simTaxableIncome * 0.2, 17640.0);
       } else {
-        deductionAmount = 564.8; // Monthly simplified discount
+        deductionAmount = 607.2; // Monthly simplified discount: 25% of the zero-rate band
       }
     } else {
       const depUnit = isAnnual ? 2275.08 : 189.59;

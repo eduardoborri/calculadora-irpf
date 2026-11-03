@@ -232,8 +232,8 @@ export default function Simulator({
               {simDeductionMode === "simplified" ? (
                 <p className="text-sm text-text-gray leading-relaxed">
                   {isAnnual
-                    ? "Desconto de 20% sobre os rendimentos tributáveis, limitado a R$ 16.754,34 na declaração simplificada."
-                    : "Desconto mensal fixo de R$ 564,80."}
+                    ? "Desconto de 20% sobre os rendimentos tributáveis, limitado a R$ 17.640,00 na declaração simplificada."
+                    : "Desconto mensal fixo de R$ 607,20."}
                 </p>
               ) : (
                 <>
@@ -278,16 +278,8 @@ export default function Simulator({
             <div className="space-y-1">
               <h3 className="section-title">Tabela progressiva</h3>
               <p className="text-sm text-text-gray">
-                {isAnnual ? (
-                  <>
-                    Tabela anual de ajuste – ano-calendário 2026. Base de cálculo, após deduções: {formatCurrency(r.netBase)} (faixa{" "}
-                    {r.activeBracketIndex + 1}).
-                  </>
-                ) : (
-                  <>
-                    Tabela mensal da Receita Federal. Base após deduções de {formatCurrency(r.netBase)}, na faixa {r.activeBracketIndex + 1}.
-                  </>
-                )}
+                {isAnnual ? "Tabela anual de ajuste" : "Tabela mensal"} – ano-calendário 2026. Base de cálculo, após deduções:{" "}
+                {formatCurrency(r.netBase)} (faixa {r.activeBracketIndex + 1}).
               </p>
             </div>
             <div className="card">
